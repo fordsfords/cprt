@@ -6,11 +6,13 @@ between Mac, Windows, and Linux (and sometimes Solaris).
 
 Use these instead of the OS-specific versions:
 
+* CPRT_NET_START - use before doing any network-related functions.
+* CPRT_NET_CLEANUP - use after finished doing network-related functions.
 * CPRT_BASENAME
 * CPRT_PERR
 * CPRT_EOK0
 * CPRT_ENULL
-* CPRT_ABRT
+* CPRT_ABORT
 * CPRT_ASSERT
 * CPRT_STRDEF - see https://stackoverflow.com/questions/25410690
 * CPRT_VOL32 - see http://blog.geeky-boy.com/2014/06/clangllvm-optimize-o3-understands-free.html

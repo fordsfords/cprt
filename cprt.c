@@ -47,12 +47,7 @@ int main(int argc, char **argv)
 {
   int opt;
 
-#ifdef _WIN32
-  /* windows-specific code */
-  WSADATA wsadata;
-  int wsStat = WSAStartup(MAKEWORD(2,2), &wsadata);
-  if (wsStat != 0) {printf("line %d: wsStat=%d\n",__LINE__,wsStat);exit(1);}
-#endif
+  CPRT_NET_START;
 
   while ((opt = getopt(argc, argv, "ht:")) != EOF) {
     switch (opt) {
@@ -151,7 +146,5 @@ int main(int argc, char **argv)
       ABRT("unknown option, aborting.");
   }
 
-#ifdef _WIN32
-  WSACleanup();
-#endif
+  CPRT_NET_CLEANUP;
 }  /* main */
