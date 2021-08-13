@@ -18,7 +18,6 @@
 #include <time.h>
 #include <errno.h>
 
-#include "safe_atoi.h"
 #include "cprt.h"
 
 
@@ -43,6 +42,8 @@ void help() {
 }
 
 
+GETOPT_PORT
+
 int main(int argc, char **argv)
 {
   int opt;
@@ -52,7 +53,7 @@ int main(int argc, char **argv)
   while ((opt = getopt(argc, argv, "ht:")) != EOF) {
     switch (opt) {
       case 't':
-        SAFE_ATOI(optarg, o_testnum);
+        o_testnum = atoi(optarg);
         break;
       case 'h':
         help();
@@ -65,69 +66,53 @@ int main(int argc, char **argv)
   if (optind != argc) { usage("Extra parameter(s)"); }
 
   switch(o_testnum) {
-    case 0:  /* no test */
+    case 0:
       break;
 
     case 1:
-      fprintf(stderr, "ASSRT\n");
-      ASSRT(o_testnum == 1 && "internal test fail");
-      ASSRT(o_testnum != 1 && "should fail");
-      break;
-
-    case 2:
     {
-      FILE *perr_fp;
-      fprintf(stderr, "PERR\n");
-      perr_fp = fopen("file_not_exist", "r");
-      if (perr_fp == NULL) {
-        PERR("errno should be 'file not found':");
-      } else {
-        ABRT("Internal test failure: 'file_not_exist' appears to exist");
-      }
+      FILE *fp;
+      fprintf(stderr, "test CPR_NULL, CPRT_PERRNO\n");
+      CPRT_ENULL(fp = fopen("cprt.c", "r")); 
+      fclose(fp); 
+      CPRT_ENULL(fp = fopen("This_should_fail", "r")); 
       break;
     }
+
+    case 2:
+      fprintf(stderr, "test CPRT_ASSERT\n");
+      CPRT_ASSERT((o_testnum == 2) && "this should NOT fail");
+      CPRT_ASSERT((o_testnum != 2) && "this should fail");
+      break;
 
     case 3:
     {
       FILE *perr_fp;
-      fprintf(stderr, "EOK0\n");
+      fprintf(stderr, "CPRT_EOK0\n");
       perr_fp = fopen("cprt.c", "r");
-      if (perr_fp == NULL) {
-        ABRT("Internal test failure: 'cprt.c' appears to not exist");
-      } else {
-        EOK0(fclose(perr_fp) && "internal test fail");
-        EOK0(fclose(perr_fp) && "should fail with bad file descr");
-      }
+      CPRT_EOK0(fclose(perr_fp) && "this should NOT fail");
+      CPRT_EOK0(fclose(perr_fp) && "this should fail with bad file descr");
       break;
     }
 
     case 4:
-    {
-      FILE *perr_fp;
-      fprintf(stderr, "ENULL\n");
-      ENULL(perr_fp = fopen("cprt.c", "r")); /* should be OK. */
-      ENULL(perr_fp = fopen("file_not_exist", "r")); /* should fail. */
+      fprintf(stderr, "CPRT_ABORT\n");
+      CPRT_ABORT("CPRT_ABORT test");
       break;
-    }
 
     case 5:
-      fprintf(stderr, "ABRT\n");
-      ABRT("ABRT test");
+      fprintf(stderr, "CPRT_SLEEP_SEC\n");
+      CPRT_SLEEP_SEC(1);
+      fprintf(stderr, "Done\n");
       break;
 
     case 6:
-      fprintf(stderr, "SLEEP_SEC\n");
-      SLEEP_SEC(1);
+      fprintf(stderr, "CPRT_SLEEP_MS 1000\n");
+      CPRT_SLEEP_MS(1000);
       fprintf(stderr, "Done\n");
       break;
 
     case 7:
-      fprintf(stderr, "SLEEP_MS 1000\n");
-      SLEEP_MS(1000);
-      fprintf(stderr, "Done\n");
-      break;
-
-    case 8:
     {
       char *str, *word, *context;
 
@@ -142,8 +127,8 @@ int main(int argc, char **argv)
       break;
     }
 
-    default: /* ABRT */
-      ABRT("unknown option, aborting.");
+    default: /* CPRT_ABORT */
+      CPRT_ABORT("unknown option, aborting.");
   }
 
   CPRT_NET_CLEANUP;

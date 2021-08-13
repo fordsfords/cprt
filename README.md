@@ -6,38 +6,26 @@ between Mac, Windows, and Linux (and sometimes Solaris).
 
 Use these instead of the OS-specific versions:
 
-* CPRT_NET_START - use before doing any network-related functions.
-* CPRT_NET_CLEANUP - use after finished doing network-related functions.
 * CPRT_BASENAME
-* CPRT_PERR
+* CPRT_PERRNO
 * CPRT_EOK0
 * CPRT_ENULL
-* CPRT_ABORT
 * CPRT_ASSERT
+* CPRT_ABORT
 * CPRT_STRDEF - see https://stackoverflow.com/questions/25410690
 * CPRT_VOL32 - see http://blog.geeky-boy.com/2014/06/clangllvm-optimize-o3-understands-free.html
+* CPRT_NET_START - use before doing any network-related functions.
+* CPRT_NET_CLEANUP - use after finished doing network-related functions.
 * CPRT_SNPRINTF
 * CPRT_STRDUP
 * CPRT_SLEEP_SEC
 * CPRT_SLEEP_MS
-* CPRT_STRTOK_PORT
-* CPRT_MUTEX_T
-* CPRT_MUTEX_INIT
-* CPRT_MUTEX_INIT_RECURSIVE
-* CPRT_MUTEX_LOCK
-* CPRT_MUTEX_TRYLOCK
-* CPRT_MUTEX_UNLOCK
-* CPRT_MUTEX_DELETE
-* CCPRT_SEM_T
-* CPRT_SEM_INIT
-* CPRT_SEM_DELETE
-* CPRT_SEM_POST
-* CPRT_SEM_WAIT
-* CPRT_THREAD_T
-* CPRT_THREAD_ENTRYPOINT
-* CPRT_THREAD_CREATE
-* CPRT_THREAD_EXIT
-* CPRT_THREAD_JOIN
+* CPRT_STRTOK
+* CPRT_MUTEX_T, CPRT_MUTEX_INIT, CPRT_MUTEX_INIT_RECURSIVE, CPRT_MUTEX_LOCK, CPRT_MUTEX_TRYLOCK, CPRT_MUTEX_UNLOCK, CPRT_MUTEX_DELETE
+* CCPRT_SEM_T, CPRT_SEM_INIT, CPRT_SEM_DELETE, CPRT_SEM_POST, CPRT_SEM_WAIT
+* CPRT_THREAD_T, CPRT_THREAD_ENTRYPOINT, CPRT_THREAD_CREATE, CPRT_THREAD_EXIT, CPRT_THREAD_JOIN
+* CPRT_AFFINITY_MASK_T, CPRT_SET_AFFINITY
+* getopt, optarg, optopt, optind, opterr
 
 ## License
 
