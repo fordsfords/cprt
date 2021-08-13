@@ -3,6 +3,7 @@ x
 x.*
 *.x
 *.tmp
+tmp.*
 *.tmp[0-9]
 
 # Executable

@@ -67,12 +67,15 @@ int main(int argc, char **argv)
 
   switch(o_testnum) {
     case 0:
+      fprintf(stderr, "test %d: GETOPT_PORT, CPRT_NET_START\n", o_testnum);
+      fflush(stderr);
       break;
 
     case 1:
     {
       FILE *fp;
-      fprintf(stderr, "test CPR_NULL, CPRT_PERRNO\n");
+      fprintf(stderr, "test %d: CPR_NULL, CPRT_PERRNO\n", o_testnum);
+      fflush(stderr);
       CPRT_ENULL(fp = fopen("cprt.c", "r")); 
       fclose(fp); 
       CPRT_ENULL(fp = fopen("This_should_fail", "r")); 
@@ -80,43 +83,47 @@ int main(int argc, char **argv)
     }
 
     case 2:
-      fprintf(stderr, "test CPRT_ASSERT\n");
-      CPRT_ASSERT((o_testnum == 2) && "this should NOT fail");
-      CPRT_ASSERT((o_testnum != 2) && "this should fail");
+      fprintf(stderr, "test %d: CPRT_ASSERT\n", o_testnum);
+      fflush(stderr);
+      CPRT_ASSERT((o_testnum == 2) && "This should NOT fail");
+      CPRT_ASSERT((o_testnum != 2) && "This should fail");
       break;
 
     case 3:
     {
       FILE *perr_fp;
-      fprintf(stderr, "CPRT_EOK0\n");
+      fprintf(stderr, "test %d: CPRT_EOK0\n", o_testnum);
+      fflush(stderr);
       perr_fp = fopen("cprt.c", "r");
-      CPRT_EOK0(fclose(perr_fp) && "this should NOT fail");
-      CPRT_EOK0(fclose(perr_fp) && "this should fail with bad file descr");
+      CPRT_EOK0(fclose(perr_fp) && "This should NOT fail");
+      CPRT_EOK0(fclose(perr_fp) && "This should fail with bad file descr");
       break;
     }
 
     case 4:
-      fprintf(stderr, "CPRT_ABORT\n");
-      CPRT_ABORT("CPRT_ABORT test");
+      fprintf(stderr, "test %d: CPRT_ABORT\n", o_testnum);
+      fflush(stderr);
+      CPRT_ABORT("CPRT_ABORT This should fail");
       break;
 
     case 5:
-      fprintf(stderr, "CPRT_SLEEP_SEC\n");
+      fprintf(stderr, "test %d: CPRT_SLEEP_SEC\n", o_testnum);
+      fflush(stderr);
       CPRT_SLEEP_SEC(1);
-      fprintf(stderr, "Done\n");
       break;
 
     case 6:
-      fprintf(stderr, "CPRT_SLEEP_MS 1000\n");
+      fprintf(stderr, "test %d: CPRT_SLEEP_MS 1000\n", o_testnum);
+      fflush(stderr);
       CPRT_SLEEP_MS(1000);
-      fprintf(stderr, "Done\n");
       break;
 
     case 7:
     {
       char *str, *word, *context;
 
-      fprintf(stderr, "STRTOK_PORT\n");
+      fprintf(stderr, "test %d: STRTOK_PORT\n", o_testnum);
+      fflush(stderr);
       str = strdup("abc,xyz,123");
       for (word = strtok_r(str, ",", &context);
           word != NULL;
@@ -128,7 +135,9 @@ int main(int argc, char **argv)
     }
 
     default: /* CPRT_ABORT */
-      CPRT_ABORT("unknown option, aborting.");
+      fprintf(stderr, "Bad test number: %d\n", o_testnum);
+      fflush(stderr);
+      CPRT_ABORT("Bad o_testnum");
   }
 
   CPRT_NET_CLEANUP;
