@@ -13,6 +13,9 @@
 # is https://github.com/fordsfords/cprt
 */
 
+/* This is needed for affinity setting. */
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -40,6 +43,63 @@ void help() {
                   "  -t testnum : run specified test\n");
   exit(0);
 }
+
+
+int my_thread_arg;
+CPRT_MUTEX_T my_thread_arg_mutex;
+
+CPRT_THREAD_ENTRYPOINT thread_test_8(void *in_arg)
+{
+  int *int_arg = (int *)in_arg;
+  int got_lock;
+
+  CPRT_ASSERT(int_arg == &my_thread_arg);
+  CPRT_ASSERT(my_thread_arg == o_testnum);
+
+  CPRT_MUTEX_TRYLOCK(got_lock, my_thread_arg_mutex);
+  CPRT_ASSERT(! got_lock);
+  CPRT_MUTEX_LOCK(my_thread_arg_mutex);
+  CPRT_ASSERT(my_thread_arg == o_testnum+1);
+  CPRT_SLEEP_MS(50);
+  my_thread_arg++;  /* Becomes o_testnum+2. */
+  CPRT_MUTEX_UNLOCK(my_thread_arg_mutex);
+
+  CPRT_SLEEP_MS(10);
+  CPRT_MUTEX_LOCK(my_thread_arg_mutex);
+  CPRT_ASSERT(my_thread_arg == o_testnum+3);
+  my_thread_arg++;  /* Becomes o_testnum+4. */
+  CPRT_MUTEX_UNLOCK(my_thread_arg_mutex);
+  CPRT_SLEEP_MS(50);
+
+  CPRT_THREAD_EXIT;
+  return 0;
+}  /* thread_test_8 */
+
+
+CPRT_THREAD_ENTRYPOINT thread_test_9(void *in_arg)
+{
+  uint64_t affinity = 0x01;
+  int i;
+  time_t cur_time;
+
+  /* Wait till the next second. */
+  cur_time = time(NULL);
+  while (time(NULL) < (cur_time + 1)) { }
+
+  for (i = 0; i < 4; i++) {
+    fprintf(stderr, "Setting affinity to %"PRIu64"\n", affinity);
+    fflush(stderr);
+    CPRT_SET_AFFINITY(affinity);
+
+    /* Wait 4 seconds. */
+    cur_time = time(NULL);
+    while (time(NULL) < (cur_time + 4)) { }
+    affinity = affinity << 1;
+  }
+
+  CPRT_THREAD_EXIT;
+  return 0;
+}  /* thread_test_9 */
 
 
 GETOPT_PORT
@@ -91,12 +151,13 @@ int main(int argc, char **argv)
 
     case 3:
     {
-      FILE *perr_fp;
+      FILE *this_should_not_fail_fp;
+      int this_should_fail = -1;
       fprintf(stderr, "test %d: CPRT_EOK0\n", o_testnum);
       fflush(stderr);
-      perr_fp = fopen("cprt.c", "r");
-      CPRT_EOK0(fclose(perr_fp) && "This should NOT fail");
-      CPRT_EOK0(fclose(perr_fp) && "This should fail with bad file descr");
+      CPRT_ENULL(this_should_not_fail_fp = fopen("cprt.c", "r"));
+      CPRT_EOK0(fclose(this_should_not_fail_fp));
+      CPRT_EOK0(this_should_fail);
       break;
     }
 
@@ -134,6 +195,56 @@ int main(int argc, char **argv)
       break;
     }
 
+    case 8:
+    {
+      CPRT_THREAD_T my_thread;
+      int got_lock;
+      fprintf(stderr, "test %d: CPRT_THREAD_CREATE\n", o_testnum);
+      fflush(stderr);
+
+      CPRT_MUTEX_INIT(my_thread_arg_mutex);
+      CPRT_MUTEX_LOCK(my_thread_arg_mutex);
+      my_thread_arg = o_testnum;
+
+      CPRT_THREAD_CREATE(my_thread, thread_test_8, &my_thread_arg);
+
+      CPRT_SLEEP_MS(50);
+      CPRT_ASSERT(my_thread_arg == o_testnum);
+      my_thread_arg++;  /* Becomes o_testnum+1 */
+      CPRT_MUTEX_UNLOCK(my_thread_arg_mutex);
+
+      CPRT_SLEEP_MS(10);
+      CPRT_MUTEX_TRYLOCK(got_lock, my_thread_arg_mutex);
+      CPRT_ASSERT(! got_lock);
+      while (! got_lock) {
+        CPRT_MUTEX_TRYLOCK(got_lock, my_thread_arg_mutex);
+      }
+      CPRT_ASSERT(my_thread_arg == o_testnum+2);
+
+      my_thread_arg++;  /* Becomes o_testnum+3 */
+      CPRT_MUTEX_UNLOCK(my_thread_arg_mutex);
+      CPRT_SLEEP_MS(50);
+
+      CPRT_THREAD_JOIN(my_thread);
+      CPRT_ASSERT(my_thread_arg == o_testnum+4);
+
+      CPRT_MUTEX_DELETE(my_thread_arg_mutex);
+
+      break;
+    }
+
+    case 9:
+    {
+      CPRT_THREAD_T my_thread;
+      fprintf(stderr, "test %d: CPRT_SET_AFFINITY\n", o_testnum);
+      fflush(stderr);
+
+      CPRT_THREAD_CREATE(my_thread, thread_test_9, NULL);
+      CPRT_THREAD_JOIN(my_thread);
+
+      break;
+    }
+
     default: /* CPRT_ABORT */
       fprintf(stderr, "Bad test number: %d\n", o_testnum);
       fflush(stderr);
@@ -141,4 +252,5 @@ int main(int argc, char **argv)
   }
 
   CPRT_NET_CLEANUP;
+  return 0;
 }  /* main */

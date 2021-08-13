@@ -25,6 +25,7 @@
   #if defined(__APPLE__)
     #include <dispatch/dispatch.h>
   #else  /* Non-Apple Unixes. */
+    #include <sched.h>
     #include <semaphore.h>
   #endif
 #endif
@@ -124,7 +125,7 @@ extern "C" {
     cprt_net_start_e = WSACleanup(); \
     if (cprt_net_start_e != 0) { \
       errno = GetLastError(); \
-      CPRT_PERRNO("WSACleanup:); \
+      CPRT_PERRNO("WSACleanup"); \
     } \
   } while (0)
 
@@ -252,8 +253,7 @@ extern "C" {
   #define CPRT_THREAD_ENTRYPOINT void *
   #define CPRT_THREAD_CREATE(_tid, _tstrt, _targ) \
     CPRT_EOK0(errno = pthread_create(&(_tid), NULL, _tstrt, _targ))
-  #define CPRT_THREAD_EXIT \
-    CPRT_EOK0(errno = pthread_exit(NULL))
+  #define CPRT_THREAD_EXIT pthread_exit(NULL)
   #define CPRT_THREAD_JOIN(_tid) \
     CPRT_EOK0(errno = pthread_join(_tid, NULL))
 #endif
@@ -272,7 +272,7 @@ extern "C" {
 
 #elif defined(__linux__)
   #define CPRT_AFFINITY_MASK_T cpu_set_t
-  #define CPRT_SET_AFFINITY(in_mask_) do { \
+  #define CPRT_SET_AFFINITY(_in_mask) do { \
     CPRT_AFFINITY_MASK_T *_cpuset; \
     int _i; \
     size_t _cpuset_sz; \
@@ -287,13 +287,14 @@ extern "C" {
       } \
       _bit = _bit << 1; \
     } \
-    CPRT_EOK0(errno = pthread_setaffinity_np(0, _cpuset_sz, _cpuset)); \
-    CPU_FREE(_cpu_set); \
+    CPRT_EOK0(errno = pthread_setaffinity_np( \
+        pthread_self(), _cpuset_sz, _cpuset)); \
+    CPU_FREE(_cpuset); \
   } while (0)
 
 #else  /* Non-Linux Unixes not supported. */
   #define CPRT_AFFINITY_MASK_T int
-  #define CPRT_SET_AFFINITY(in_mask_) do { \
+  #define CPRT_SET_AFFINITY(_in_mask) do { \
     errno = 0; \
   } while (0)
 

@@ -12,7 +12,12 @@ ok() {
 }
 
 
-gcc -Wall -o cprt cprt.c
+OPTS=""
+if echo "$OSTYPE" | egrep -i linux; then :
+  OPTS="-l pthread"
+fi
+
+gcc -Wall -o cprt $OPTS cprt.c
 if [ $? -ne 0 ]; then exit 1; fi
 
 
@@ -43,9 +48,9 @@ ok
 
 ./cprt -t 3 >tst.tmp 2>&1
 if [ $? -eq 0 ]; then fail; fi
-if egrep "This should fail" tst.tmp >/dev/null; then :; else :
+if egrep "this_should_fail" tst.tmp >/dev/null; then :; else :
   fail; fi
-egrep -v "^test |This should fail" tst.tmp >tst.tmp1
+egrep -v "^test |this_should_fail" tst.tmp >tst.tmp1
 if [ -s tst.tmp1 ]; then fail; fi
 ok
 
@@ -56,4 +61,14 @@ if egrep "This should fail" tst.tmp >/dev/null; then :; else :
 egrep -v "^test |This should fail" tst.tmp >tst.tmp1
 if [ -s tst.tmp1 ]; then fail; fi
 ok
+
+./cprt -t 8 >tst.tmp 2>&1
+if [ $? -ne 0 ]; then fail; fi
+egrep -v "^test " tst.tmp >tst.tmp1
+if [ -s tst.tmp1 ]; then fail; fi
+ok
+
+echo "If on Linux, run "top -d 1" and then press "1" to get per-CPU usage"
+./cprt -t 9 >tst.tmp
+if [ $? -ne 0 ]; then fail; fi
 
