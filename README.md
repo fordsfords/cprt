@@ -56,7 +56,7 @@ in their source files, and by programmers who do not.
 
 This becomes problematic for certain corner cases where cprt uses an API
 that changes behavior between _GNU_SOURCE and not _GNU_SOURCE.
-For example, the "strerror_r()" function works completely differenly:
+For example, according to https://linux.die.net/man/3/strerror_r
 > int strerror_r(int errnum, char *buf, size_t buflen); /* XSI-compliant */
 >
 > char *strerror_r(int errnum, char *buf, size_t buflen); /* GNU-specific */
