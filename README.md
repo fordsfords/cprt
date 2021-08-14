@@ -57,13 +57,14 @@ in their source files, and by programmers who do not.
 This becomes problematic for certain corner cases where cprt uses an API
 that changes behavior between _GNU_SOURCE and not _GNU_SOURCE.
 For example, according to https://linux.die.net/man/3/strerror_r
+
 > int strerror_r(int errnum, char *buf, size_t buflen); /* XSI-compliant */
 >
 > char *strerror_r(int errnum, char *buf, size_t buflen); /* GNU-specific */
-> ...
-> It returns the error string in the user-supplied buffer buf of length buflen.
-> ...
-> The GNU-specific strerror_r() returns a pointer to a string containing the error message. This may be either a pointer to a string that the function stores in buf, or a pointer to some (immutable) static string (in which case buf is unused).
+>
+> ... It returns the error string in the user-supplied buffer buf of length buflen.
+
+> ... The GNU-specific strerror_r() returns a pointer to a string containing the error message. This may be either a pointer to a string that the function stores in buf, or a pointer to some (immutable) static string (in which case buf is unused).
 
 I.e. if you write code that calls strerror_r(), you *must* know which version
 you are getting.
