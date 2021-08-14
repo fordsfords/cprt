@@ -273,23 +273,19 @@ extern "C" {
 #elif defined(__linux__)
   #define CPRT_AFFINITY_MASK_T cpu_set_t
   #define CPRT_SET_AFFINITY(_in_mask) do { \
-    CPRT_AFFINITY_MASK_T *_cpuset; \
+    CPRT_AFFINITY_MASK_T _cpuset; \
     int _i; \
-    size_t _cpuset_sz; \
     uint64_t _bit = 1; \
     uint64_t _bit_mask = _in_mask; \
-    _cpuset = CPU_ALLOC(64); \
-    _cpuset_sz = CPU_ALLOC_SIZE(64); \
-    CPU_ZERO_S(_cpuset_sz, _cpuset); \
+    __CPU_ZERO(&_cpuset); \
     for (_i = 0; _i < 64; _i++) { \
       if ((_bit_mask & _bit) == _bit) { \
-        CPU_SET_S(_i, _cpuset_sz, _cpuset); \
+        __CPU_SET(_i, &_cpuset); \
       } \
       _bit = _bit << 1; \
     } \
     CPRT_EOK0(errno = pthread_setaffinity_np( \
-        pthread_self(), _cpuset_sz, _cpuset)); \
-    CPU_FREE(_cpuset); \
+        pthread_self(), sizeof(_cpuset), _cpuset)); \
   } while (0)
 
 #else  /* Non-Linux Unixes not supported. */

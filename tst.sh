@@ -68,7 +68,3 @@ egrep -v "^test " tst.tmp >tst.tmp1
 if [ -s tst.tmp1 ]; then fail; fi
 ok
 
-echo "If on Linux, run "top -d 1" and then press "1" to get per-CPU usage"
-./cprt -t 9 >tst.tmp
-if [ $? -ne 0 ]; then fail; fi
-

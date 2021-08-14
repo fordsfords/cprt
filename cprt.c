@@ -13,9 +13,6 @@
 # is https://github.com/fordsfords/cprt
 */
 
-/* This is needed for affinity setting. */
-#define _GNU_SOURCE
-
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -152,12 +149,12 @@ int main(int argc, char **argv)
     case 3:
     {
       FILE *this_should_not_fail_fp;
-      int this_should_fail = -1;
+      int this_should_fail = 22;
       fprintf(stderr, "test %d: CPRT_EOK0\n", o_testnum);
       fflush(stderr);
       CPRT_ENULL(this_should_not_fail_fp = fopen("cprt.c", "r"));
       CPRT_EOK0(fclose(this_should_not_fail_fp));
-      CPRT_EOK0(this_should_fail);
+      CPRT_EOK0(errno = this_should_fail);
       break;
     }
 
@@ -197,7 +194,7 @@ int main(int argc, char **argv)
 
     case 8:
     {
-      CPRT_THREAD_T my_thread;
+      CPRT_THREAD_T my_thread_id;
       int got_lock;
       fprintf(stderr, "test %d: CPRT_THREAD_CREATE\n", o_testnum);
       fflush(stderr);
@@ -206,7 +203,7 @@ int main(int argc, char **argv)
       CPRT_MUTEX_LOCK(my_thread_arg_mutex);
       my_thread_arg = o_testnum;
 
-      CPRT_THREAD_CREATE(my_thread, thread_test_8, &my_thread_arg);
+      CPRT_THREAD_CREATE(my_thread_id, thread_test_8, &my_thread_arg);
 
       CPRT_SLEEP_MS(50);
       CPRT_ASSERT(my_thread_arg == o_testnum);
@@ -225,7 +222,7 @@ int main(int argc, char **argv)
       CPRT_MUTEX_UNLOCK(my_thread_arg_mutex);
       CPRT_SLEEP_MS(50);
 
-      CPRT_THREAD_JOIN(my_thread);
+      CPRT_THREAD_JOIN(my_thread_id);
       CPRT_ASSERT(my_thread_arg == o_testnum+4);
 
       CPRT_MUTEX_DELETE(my_thread_arg_mutex);
@@ -235,12 +232,12 @@ int main(int argc, char **argv)
 
     case 9:
     {
-      CPRT_THREAD_T my_thread;
+      CPRT_THREAD_T my_thread_id;
       fprintf(stderr, "test %d: CPRT_SET_AFFINITY\n", o_testnum);
       fflush(stderr);
 
-      CPRT_THREAD_CREATE(my_thread, thread_test_9, NULL);
-      CPRT_THREAD_JOIN(my_thread);
+      CPRT_THREAD_CREATE(my_thread_id, thread_test_9, NULL);
+      CPRT_THREAD_JOIN(my_thread_id);
 
       break;
     }
