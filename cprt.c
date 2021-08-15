@@ -13,6 +13,12 @@
 # is https://github.com/fordsfords/cprt
 */
 
+#if defined(_WIN32)
+#include <windows.h>
+#else  /* Unix */
+#define _GNU_SOURCE
+#endif
+
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -21,233 +27,204 @@
 #include "cprt.h"
 
 
-/* Options and their defaults */
-int o_testnum = 0;
-
-
-char usage_str[] = "Usage: cprt [-h] [-t testnum]";
-
-void usage(char *msg) {
-  if (msg) fprintf(stderr, "%s\n", msg);
-  fprintf(stderr, "%s\n", usage_str);
-  exit(1);
-}
-
-void help() {
-  fprintf(stderr, "%s\n", usage_str);
-  fprintf(stderr, "where:\n"
-                  "  -h : print help\n"
-                  "  -t testnum : run specified test\n");
-  exit(0);
-}
-
-
-int my_thread_arg;
-CPRT_MUTEX_T my_thread_arg_mutex;
-
-CPRT_THREAD_ENTRYPOINT thread_test_8(void *in_arg)
+char *cprt_strerror(int errnum, char *buffer, size_t buf_sz)
 {
-  int *int_arg = (int *)in_arg;
-  int got_lock;
+#if defined(_WIN32)
+  strerror_s(buffer, buf_sz, errnum);
 
-  CPRT_ASSERT(int_arg == &my_thread_arg);
-  CPRT_ASSERT(my_thread_arg == o_testnum);
+#elif defined(__linux__)
+  char work_buffer[1024];
+  char *err_str;
 
-  CPRT_MUTEX_TRYLOCK(got_lock, my_thread_arg_mutex);
-  CPRT_ASSERT(! got_lock);
-  CPRT_MUTEX_LOCK(my_thread_arg_mutex);
-  CPRT_ASSERT(my_thread_arg == o_testnum+1);
-  CPRT_SLEEP_MS(50);
-  my_thread_arg++;  /* Becomes o_testnum+2. */
-  CPRT_MUTEX_UNLOCK(my_thread_arg_mutex);
+  /* Note that this uses the GNU-variant of strerror_r. */
+  err_str = strerror_r(errnum, work_buffer, sizeof(work_buffer));
+  if (err_str != NULL) {
+    strncpy(buffer, err_str, buf_sz);
+    buffer[buf_sz-1] = '\0';  /* make sure it has a null term. */
+  }
 
-  CPRT_SLEEP_MS(10);
-  CPRT_MUTEX_LOCK(my_thread_arg_mutex);
-  CPRT_ASSERT(my_thread_arg == o_testnum+3);
-  my_thread_arg++;  /* Becomes o_testnum+4. */
-  CPRT_MUTEX_UNLOCK(my_thread_arg_mutex);
-  CPRT_SLEEP_MS(50);
+#else  /* Non-Linux Unix. */
+  strerror_r(errnum, buffer, buf_sz);
 
-  CPRT_THREAD_EXIT;
-  return 0;
-}  /* thread_test_8 */
+#endif
+
+  return buffer;
+}  /* cprt_strerror */
 
 
-CPRT_THREAD_ENTRYPOINT thread_test_9(void *in_arg)
+void cprt_set_affinity(uint64_t in_mask)
 {
-  uint64_t affinity = 0x01;
+#if defined(_WIN32)
+  DWORD_PTR rc;
+  rc = SetThreadAffinityMask(GetCurrentThread(), in_mask);
+  if (rc != 0) {
+    errno = GetLastError();
+    CPRT_PERRNO("SetThreadAffinityMask");
+  }
+
+#elif defined(__linux__)
+  cpu_set_t cpuset;
   int i;
-  time_t cur_time;
+  uint64_t bit = 1;
+  CPU_ZERO(&cpuset);
+  for (i = 0; i < 64; i++) {
+    if ((in_mask & bit) == bit) {
+      CPU_SET(i, &cpuset);
+    }
+    bit = bit << 1;
+  }
+  CPRT_EOK0(errno = pthread_setaffinity_np(
+      pthread_self(), sizeof(cpuset), &cpuset));
 
-  /* Wait till the next second. */
-  cur_time = time(NULL);
-  while (time(NULL) < (cur_time + 1)) { }
+#else /* Non-Linux Unix. */
+#endif
+}  /* cprt_set_affinity */
 
-  for (i = 0; i < 4; i++) {
-    fprintf(stderr, "Setting affinity to %"PRIu64"\n", affinity);
-    fflush(stderr);
-    CPRT_SET_AFFINITY(affinity);
 
-    /* Wait 4 seconds. */
-    cur_time = time(NULL);
-    while (time(NULL) < (cur_time + 4)) { }
-    affinity = affinity << 1;
+#if defined(_WIN32)
+/*******************************************************************************
+ * Copyright (c) 2012-2017, Kim Grasman <kim.grasman@gmail.com>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *   * Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions and the following disclaimer.
+ *   * Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
+ *     documentation and/or other materials provided with the distribution.
+ *   * Neither the name of Kim Grasman nor the
+ *     names of contributors may be used to endorse or promote products
+ *     derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL KIM GRASMAN BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ ******************************************************************************/
+
+char* optarg;
+int optopt;
+/* The variable optind [...] shall be initialized to 1 by the system. */
+int optind = 1;
+int opterr;
+
+static char* optcursor = NULL;
+
+/* Implemented based on [1] and [2] for optional arguments.
+   optopt is handled FreeBSD-style, per [3].
+   Other GNU and FreeBSD extensions are purely accidental.
+
+[1] http://pubs.opengroup.org/onlinepubs/000095399/functions/getopt.html
+[2] http://www.kernel.org/doc/man-pages/online/pages/man3/getopt.3.html
+[3] http://www.freebsd.org/cgi/man.cgi?query=getopt&sektion=3&manpath=FreeBSD+9.0-RELEASE
+*/
+int getopt(int argc, char* const argv[], const char* optstring) {
+  int optchar = -1;
+  const char* optdecl = NULL;
+
+  optarg = NULL;
+  opterr = 0;
+  optopt = 0;
+
+  /* Unspecified, but we need it to avoid overrunning the argv bounds. */
+  if (optind >= argc)
+    goto no_more_optchars;
+
+  /* If, when getopt() is called argv[optind] is a null pointer, getopt()
+     shall return -1 without changing optind. */
+  if (argv[optind] == NULL)
+    goto no_more_optchars;
+
+  /* If, when getopt() is called *argv[optind]  is not the character '-',
+     getopt() shall return -1 without changing optind. */
+  if (*argv[optind] != '-')
+    goto no_more_optchars;
+
+  /* If, when getopt() is called argv[optind] points to the string "-",
+     getopt() shall return -1 without changing optind. */
+  if (strcmp(argv[optind], "-") == 0)
+    goto no_more_optchars;
+
+  /* If, when getopt() is called argv[optind] points to the string "--",
+     getopt() shall return -1 after incrementing optind. */
+  if (strcmp(argv[optind], "--") == 0) {
+    ++optind;
+    goto no_more_optchars;
   }
 
-  CPRT_THREAD_EXIT;
-  return 0;
-}  /* thread_test_9 */
+  if (optcursor == NULL || *optcursor == '\0')
+    optcursor = argv[optind] + 1;
 
+  optchar = *optcursor;
 
-GETOPT_PORT
+  /* FreeBSD: The variable optopt saves the last known option character
+     returned by getopt(). */
+  optopt = optchar;
 
-int main(int argc, char **argv)
-{
-  int opt;
+  /* The getopt() function shall return the next option character (if one is
+     found) from argv that matches a character in optstring, if there is
+     one that matches. */
+  optdecl = strchr(optstring, optchar);
+  if (optdecl) {
+    /* [I]f a character is followed by a colon, the option takes an
+       argument. */
+    if (optdecl[1] == ':') {
+      optarg = ++optcursor;
+      if (*optarg == '\0') {
+        /* GNU extension: Two colons mean an option takes an
+           optional arg; if there is text in the current argv-element
+           (i.e., in the same word as the option name itself, for example,
+           "-oarg"), then it is returned in optarg, otherwise optarg is set
+           to zero. */
+        if (optdecl[2] != ':') {
+          /* If the option was the last character in the string pointed to by
+             an element of argv, then optarg shall contain the next element
+             of argv, and optind shall be incremented by 2. If the resulting
+             value of optind is greater than argc, this indicates a missing
+             option-argument, and getopt() shall return an error indication.
 
-  CPRT_NET_START;
-
-  while ((opt = getopt(argc, argv, "ht:")) != EOF) {
-    switch (opt) {
-      case 't':
-        o_testnum = atoi(optarg);
-        break;
-      case 'h':
-        help();
-        break;
-      default:
-        usage(NULL);
-    }  /* switch opt */
-  }  /* while getopt */
-
-  if (optind != argc) { usage("Extra parameter(s)"); }
-
-  switch(o_testnum) {
-    case 0:
-      fprintf(stderr, "test %d: GETOPT_PORT, CPRT_NET_START\n", o_testnum);
-      fflush(stderr);
-      break;
-
-    case 1:
-    {
-      FILE *fp;
-      fprintf(stderr, "test %d: CPR_NULL, CPRT_PERRNO\n", o_testnum);
-      fflush(stderr);
-      CPRT_ENULL(fp = fopen("cprt.c", "r")); 
-      fclose(fp); 
-      CPRT_ENULL(fp = fopen("This_should_fail", "r")); 
-      break;
-    }
-
-    case 2:
-      fprintf(stderr, "test %d: CPRT_ASSERT\n", o_testnum);
-      fflush(stderr);
-      CPRT_ASSERT((o_testnum == 2) && "This should NOT fail");
-      CPRT_ASSERT((o_testnum != 2) && "This should fail");
-      break;
-
-    case 3:
-    {
-      FILE *this_should_not_fail_fp;
-      int this_should_fail = 22;
-      fprintf(stderr, "test %d: CPRT_EOK0\n", o_testnum);
-      fflush(stderr);
-      CPRT_ENULL(this_should_not_fail_fp = fopen("cprt.c", "r"));
-      CPRT_EOK0(fclose(this_should_not_fail_fp));
-      CPRT_EOK0(errno = this_should_fail);
-      break;
-    }
-
-    case 4:
-      fprintf(stderr, "test %d: CPRT_ABORT\n", o_testnum);
-      fflush(stderr);
-      CPRT_ABORT("CPRT_ABORT This should fail");
-      break;
-
-    case 5:
-      fprintf(stderr, "test %d: CPRT_SLEEP_SEC\n", o_testnum);
-      fflush(stderr);
-      CPRT_SLEEP_SEC(1);
-      break;
-
-    case 6:
-      fprintf(stderr, "test %d: CPRT_SLEEP_MS 1000\n", o_testnum);
-      fflush(stderr);
-      CPRT_SLEEP_MS(1000);
-      break;
-
-    case 7:
-    {
-      char *str, *word, *context;
-
-      fprintf(stderr, "test %d: STRTOK_PORT\n", o_testnum);
-      fflush(stderr);
-      str = strdup("abc,xyz,123");
-      for (word = strtok_r(str, ",", &context);
-          word != NULL;
-          word = strtok_r(NULL, ",", &context)) {
-        printf("word='%s'\n", word);
+             Otherwise, optarg shall point to the string following the
+             option character in that element of argv, and optind shall be
+             incremented by 1.
+          */
+          if (++optind < argc) {
+            optarg = argv[optind];
+          } else {
+            /* If it detects a missing option-argument, it shall return the
+               colon character ( ':' ) if the first character of optstring
+               was a colon, or a question-mark character ( '?' ) otherwise.
+            */
+            optarg = NULL;
+            optchar = (optstring[0] == ':') ? ':' : '?';
+          }
+        } else {
+          optarg = NULL;
+        }
       }
 
-      break;
+      optcursor = NULL;
     }
-
-    case 8:
-    {
-      CPRT_THREAD_T my_thread_id;
-      int got_lock;
-      fprintf(stderr, "test %d: CPRT_THREAD_CREATE\n", o_testnum);
-      fflush(stderr);
-
-      CPRT_MUTEX_INIT(my_thread_arg_mutex);
-      CPRT_MUTEX_LOCK(my_thread_arg_mutex);
-      my_thread_arg = o_testnum;
-
-      CPRT_THREAD_CREATE(my_thread_id, thread_test_8, &my_thread_arg);
-
-      CPRT_SLEEP_MS(50);
-      CPRT_ASSERT(my_thread_arg == o_testnum);
-      my_thread_arg++;  /* Becomes o_testnum+1 */
-      CPRT_MUTEX_UNLOCK(my_thread_arg_mutex);
-
-      CPRT_SLEEP_MS(10);
-      CPRT_MUTEX_TRYLOCK(got_lock, my_thread_arg_mutex);
-      CPRT_ASSERT(! got_lock);
-      while (! got_lock) {
-        CPRT_MUTEX_TRYLOCK(got_lock, my_thread_arg_mutex);
-      }
-      CPRT_ASSERT(my_thread_arg == o_testnum+2);
-
-      my_thread_arg++;  /* Becomes o_testnum+3 */
-      CPRT_MUTEX_UNLOCK(my_thread_arg_mutex);
-      CPRT_SLEEP_MS(50);
-
-      CPRT_THREAD_JOIN(my_thread_id);
-      CPRT_ASSERT(my_thread_arg == o_testnum+4);
-
-      CPRT_MUTEX_DELETE(my_thread_arg_mutex);
-
-      break;
-    }
-
-    case 9:
-    {
-      CPRT_THREAD_T my_thread_id;
-      fprintf(stderr, "test %d: CPRT_SET_AFFINITY\n", o_testnum);
-      fflush(stderr);
-
-      CPRT_THREAD_CREATE(my_thread_id, thread_test_9, NULL);
-      CPRT_THREAD_JOIN(my_thread_id);
-
-      break;
-    }
-
-    default: /* CPRT_ABORT */
-      fprintf(stderr, "Bad test number: %d\n", o_testnum);
-      fflush(stderr);
-      CPRT_ABORT("Bad o_testnum");
+  } else {
+    /* If getopt() encounters an option character that is not contained in
+       optstring, it shall return the question-mark ( '?' ) character. */
+    optchar = '?';
   }
 
-  CPRT_NET_CLEANUP;
-  return 0;
-}  /* main */
+  if (optcursor == NULL || *++optcursor == '\0')
+    ++optind;
+
+  return optchar;
+
+no_more_optchars:
+  optcursor = NULL;
+  return -1;
+}
+#endif

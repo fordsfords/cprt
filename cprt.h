@@ -38,32 +38,20 @@ extern "C" {
 /* Macro to approximate the basename() function. */
 #define CPRT_BASENAME(_p) ((strrchr(_p, '/') == NULL) ? (_p) : (strrchr(_p, '/')+1))
 
-#if defined(_WIN32)
-  #define CPRT_PERRNO(cprt_perrno_in_str) do { \
-    char cprt_perrno_errno = errno; \
-    char cprt_perrno_errstr[1024]; \
-    strerror_s(cprt_perrno_errno, cprt_perrno_errstr, sizeof(cprt_perrno_errstr)); \
-    fprintf(stderr, "ERROR (%s:%d): %s: errno=%u ('%s')\n", \
-      CPRT_BASENAME(__FILE__), __LINE__, cprt_perrno_in_str, cprt_perrno_errno, cprt_perrno_errstr_); \
-    fflush(stderr); \
-    exit(1); \
-  } while (0)
-
-#else  /* Unix */
-  #define CPRT_PERRNO(cprt_perrno_in_str) do { \
-    char cprt_perrno_errno = errno; \
-    char cprt_perrno_errstr[1024]; \
-    strerror_r(cprt_perrno_errno, cprt_perrno_errstr, sizeof(cprt_perrno_errstr)); \
-    fprintf(stderr, "ERROR (%s:%d): %s: errno=%u ('%s')\n", \
-      CPRT_BASENAME(__FILE__), __LINE__, cprt_perrno_in_str, cprt_perrno_errno, cprt_perrno_errstr); \
-    fflush(stderr); \
-    exit(1); \
-  } while (0)
-#endif
+/* Macro to print errno in human-readable form and exit(1). */
+#define CPRT_PERRNO(cprt_perrno_in_str_) do { \
+  char cprt_perrno_errno_ = errno; \
+  char cprt_perrno_errstr_[1024]; \
+  cprt_strerror(cprt_perrno_errno_, cprt_perrno_errstr_, sizeof(cprt_perrno_errstr_)); \
+  fprintf(stderr, "ERROR (%s:%d): %s: errno=%u ('%s')\n", \
+      CPRT_BASENAME(__FILE__), __LINE__, cprt_perrno_in_str_, \
+      cprt_perrno_errno_, cprt_perrno_errstr_); \
+  fflush(stderr); \
+  exit(1); \
+} while (0)
 
 /* Use when non-zero means error. */
 #define CPRT_EOK0(cprt_eok0_expr) do { \
-  errno = 0; \
   if ((cprt_eok0_expr) != 0) { \
     int cprt_eok0_errno = errno; \
     char cprt_eok0_errstr[1024]; \
@@ -75,7 +63,6 @@ extern "C" {
 
 /* Use when NULL means error. */
 #define CPRT_ENULL(cprt_enull_expr) do { \
-  errno = 0; \
   if ((cprt_enull_expr) == NULL) { \
     int cprt_enull_errno = errno; \
     char cprt_enull_errstr[1024]; \
@@ -112,6 +99,71 @@ extern "C" {
  *  for why the CPRT_VOL32 macro is needed.
  */
 #define CPRT_VOL32(cprt_vol32_ptr) (*(volatile uint32_t *)&(cprt_vol32_ptr))
+
+
+/* See https://github.com/fordsfords/safe_atoi */
+#define CPRT_ATOI(a_,r_) do { \
+  char *in_a_ = (a_); \
+  int new_errno_; \
+  unsigned long long fs_[9] = {  /* All '1's by variable size. */ \
+    0, 0xff, 0xffff, 0, 0xffffffff, 0, 0, 0, 0xffffffffffffffff }; \
+  (r_) = fs_[sizeof(r_)]; \
+  if ((r_) < 0) { /* Is result a signed value? */ \
+    char *temp_ = NULL;  long long llresult_; \
+    if (strlen(in_a_) > 2 && in_a_[0] == '0' && (in_a_[1] == 'x' || in_a_[1] == 'X')) { \
+      in_a_ += 2;  /* Skip past '0x'. */ \
+      errno = 0; \
+      llresult_ = strtoll(in_a_, &temp_, 16); \
+      new_errno_ = errno; \
+    } else { \
+      errno = 0; \
+      llresult_ = strtoll(in_a_, &temp_, 10); \
+      new_errno_ = errno; \
+    } \
+    if (new_errno_ != 0 || temp_ == in_a_ || temp_ == NULL || *temp_ != '\0') { \
+      if (new_errno_ == 0) { \
+        new_errno_ = EINVAL; \
+      } \
+      fprintf(stderr, "%s:%d, Error, invalid number for %s: '%s'\n", \
+         __FILE__, __LINE__, #r_, in_a_); \
+    } else { /* strtol thinks success; check for overflow. */ \
+      (r_) = llresult_; /* "return" value of macro */ \
+      if ((r_) != llresult_) { \
+        fprintf(stderr, "%s:%d, %s over/under flow: '%s'\n", \
+           __FILE__, __LINE__, #r_, in_a_); \
+        new_errno_ = ERANGE; \
+      } \
+    } \
+  } else { \
+    char *temp_ = NULL;  unsigned long long llresult_; \
+    if (strlen(in_a_) > 2 && in_a_[0] == '0' && (in_a_[1] == 'x' || in_a_[1] == 'X')) { \
+      in_a_ += 2;  /* Skip past '0x'. */ \
+      errno = 0; \
+      llresult_ = strtoull(in_a_, &temp_, 16); \
+      new_errno_ = errno; \
+    } else { \
+      errno = 0; \
+      llresult_ = strtoull(in_a_, &temp_, 10); \
+      new_errno_ = errno; \
+    } \
+    if (new_errno_ != 0 || temp_ == in_a_ || temp_ == NULL || *temp_ != '\0') { \
+      if (new_errno_ == 0) { \
+        new_errno_ = EINVAL; \
+      } \
+      fprintf(stderr, "%s:%d, Error, invalid number for %s: '%s'\n", \
+         __FILE__, __LINE__, #r_, in_a_); \
+    } else { /* strtol thinks success; check for overflow. */ \
+      (r_) = llresult_; /* "return" value of macro */ \
+      if ((r_) != llresult_) { \
+        fprintf(stderr, "%s:%d, %s over/under flow: '%s'\n", \
+           __FILE__, __LINE__, #r_, in_a_); \
+        new_errno_ = ERANGE; \
+      } \
+    } \
+  } \
+  errno = new_errno_; \
+  CPRT_EOK0(errno); \
+} while (0)
 
 
 #if defined(_WIN32)
@@ -258,161 +310,17 @@ extern "C" {
     CPRT_EOK0(errno = pthread_join(_tid, NULL))
 #endif
 
+
+/* Functions in cprt.c. */
+char *cprt_strerror(int errnum, char *buffer, size_t buf_sz);
+void cprt_set_affinity(uint64_t in_mask);
 #if defined(_WIN32)
-#define CPRT_AFFINITY_MASK_T DWORD_PTR;
-  #define CPRT_SET_AFFINITY(_in_mask) do { \
-    DWORD_PTR _rc;
-    _rc = SetThreadAffinityMask(GetCurrentThread(), _in_mask); \
-    if (_rc != 0) { \
-      errno = GetLastError(); \
-      CPRT_PERRNO("SetThreadAffinityMask"); \
-    } \
-  } while (0)
-
-
-#elif defined(__linux__)
-  #define CPRT_AFFINITY_MASK_T cpu_set_t
-  #define CPRT_SET_AFFINITY(_in_mask) do { \
-    CPRT_AFFINITY_MASK_T _cpuset; \
-    int _i; \
-    uint64_t _bit = 1; \
-    uint64_t _bit_mask = _in_mask; \
-    __CPU_ZERO(&_cpuset); \
-    for (_i = 0; _i < 64; _i++) { \
-      if ((_bit_mask & _bit) == _bit) { \
-        __CPU_SET(_i, &_cpuset); \
-      } \
-      _bit = _bit << 1; \
-    } \
-    CPRT_EOK0(errno = pthread_setaffinity_np( \
-        pthread_self(), sizeof(_cpuset), _cpuset)); \
-  } while (0)
-
-#else  /* Non-Linux Unixes not supported. */
-  #define CPRT_AFFINITY_MASK_T int
-  #define CPRT_SET_AFFINITY(_in_mask) do { \
-    errno = 0; \
-  } while (0)
-
-#endif
-#if defined(_WIN32)
-/* The following code is from https://github.com/fordsfords/getopt_port which
- * is forked from https://github.com/kimgr/getopt_port
- */
-/*******************************************************************************
- * Copyright (c) 2012-2017, Kim Grasman <kim.grasman@gmail.com>
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *   * Redistributions of source code must retain the above copyright
- *     notice, this list of conditions and the following disclaimer.
- *   * Redistributions in binary form must reproduce the above copyright
- *     notice, this list of conditions and the following disclaimer in the
- *     documentation and/or other materials provided with the distribution.
- *   * Neither the name of Kim Grasman nor the
- *     names of contributors may be used to endorse or promote products
- *     derived from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL KIM GRASMAN BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * Updated by Steve Ford <fordsfords@gmail.com> to be all-inclusive in the
- * include file. No ".c" file needed. Requires adding GETOPT_PORT above
- * your "main()".
- *
- ******************************************************************************/
-
-
-  #define no_argument 1
-  #define required_argument 2
-  #define optional_argument 3
-
   extern char* optarg;
-  extern int optind, opterr, optopt;
-
-  struct option {
-    const char* name;
-    int has_arg;
-    int* flag;
-    int val;
-  };
-
+  extern int optopt;
+  extern int optind;
+  extern int opterr;
   int getopt(int argc, char* const argv[], const char* optstring);
-
-  int getopt_long(int argc, char* const argv[],
-    const char* optstring, const struct option* longopts, int* longindex);
-
-
-  #define GETOPT_PORT \
-    char* optarg; \
-    int optopt; \
-    int optind = 1; \
-    int opterr; \
-    static char* optcursor = NULL; \
-    int getopt(int argc, char* const argv[], const char* optstring) { \
-      int optchar = -1; \
-      const char* optdecl = NULL; \
-      optarg = NULL; \
-      opterr = 0; \
-      optopt = 0; \
-      if (optind >= argc) \
-        goto no_more_optchars; \
-      if (argv[optind] == NULL) \
-        goto no_more_optchars; \
-      if (*argv[optind] != '-') \
-        goto no_more_optchars; \
-      if (strcmp(argv[optind], "-") == 0) \
-        goto no_more_optchars; \
-      if (strcmp(argv[optind], "--") == 0) { \
-        ++optind; \
-        goto no_more_optchars; \
-      } \
-      if (optcursor == NULL || *optcursor == '\0') \
-        optcursor = argv[optind] + 1; \
-      optchar = *optcursor; \
-      optopt = optchar; \
-      optdecl = strchr(optstring, optchar); \
-      if (optdecl) { \
-        if (optdecl[1] == ':') { \
-          optarg = ++optcursor; \
-          if (*optarg == '\0') { \
-            if (optdecl[2] != ':') { \
-              if (++optind < argc) { \
-                optarg = argv[optind]; \
-              } else { \
-                optarg = NULL; \
-                optchar = (optstring[0] == ':') ? ':' : '?'; \
-              } \
-            } else { \
-              optarg = NULL; \
-            } \
-          } \
-          optcursor = NULL; \
-        } \
-      } else { \
-        optchar = '?'; \
-      } \
-      if (optcursor == NULL || *++optcursor == '\0') \
-        ++optind; \
-      return optchar; \
-    no_more_optchars: \
-      optcursor = NULL; \
-      return -1; \
-    } \
-
-#else  /* Unix */
-  #define GETOPT_PORT
 #endif
-
 
 #if defined(__cplusplus)
 }

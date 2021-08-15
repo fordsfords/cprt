@@ -63,17 +63,23 @@ For example, according to https://linux.die.net/man/3/strerror_r
 > char *strerror_r(int errnum, char *buf, size_t buflen); /* GNU-specific */
 >
 > ... It returns the error string in the user-supplied buffer buf of length buflen.
-
+>
 > ... The GNU-specific strerror_r() returns a pointer to a string containing the error message. This may be either a pointer to a string that the function stores in buf, or a pointer to some (immutable) static string (in which case buf is unused).
 
 I.e. if you write code that calls strerror_r(), you *must* know which version
 you are getting.
 
 This is why I need a ".c" file to go with cprt.
+
 My original cprt was fully-contained within a ".h" file,
 but I ran into problems where I needed _GNU_SOURCE for setting CPU affinity,
 but I did not want cprt to require users to compile their programs with
 _GNU_SOURCE.
+
+So I had to move some cprt functionality into a C module and explicitly set
+_GNU_SOURCE.
+So long as cprt [is reasonably careful](https://stackoverflow.com/a/44199427),
+"cprt.c" can safely be linked with code compiled without _GNU_SOURCE.
 
 ## License
 
