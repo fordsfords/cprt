@@ -14,17 +14,16 @@
 */
 
 #if defined(_WIN32)
-#include <windows.h>
 #else  /* Unix */
 #define _GNU_SOURCE
 #endif
+
+#include "cprt.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <errno.h>
-
-#include "cprt.h"
 
 
 char *cprt_strerror(int errnum, char *buffer, size_t buf_sz)
@@ -57,7 +56,7 @@ void cprt_set_affinity(uint64_t in_mask)
 #if defined(_WIN32)
   DWORD_PTR rc;
   rc = SetThreadAffinityMask(GetCurrentThread(), in_mask);
-  if (rc != 0) {
+  if (rc == 0) {
     errno = GetLastError();
     CPRT_PERRNO("SetThreadAffinityMask");
   }

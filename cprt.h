@@ -12,11 +12,10 @@
 #ifndef CPRT_H
 #define CPRT_H
 
-#include <inttypes.h>
-
 #if defined(_WIN32)
-  #include <windows.h>
   #include <winsock2.h>
+  #pragma comment(lib, "Ws2_32.lib")
+  #pragma warning(disable : 4996)
 
 #else  /* Unix */
   #include <unistd.h>
@@ -29,6 +28,8 @@
     #include <semaphore.h>
   #endif
 #endif
+
+#include <inttypes.h>
 
 
 #ifdef __cplusplus
@@ -208,7 +209,7 @@ extern "C" {
 
 
 #if defined(_WIN32)
-  #define CPRT_MUTEX_T prt_mutex_t;
+  #define CPRT_MUTEX_T CRITICAL_SECTION
   #define CPRT_MUTEX_INIT(_m) InitializeCriticalSection(&(_m))
   #define CPRT_MUTEX_INIT_RECURSIVE(_m) InitializeCriticalSection(&(_m))
   #define CPRT_MUTEX_LOCK(_m) EnterCriticalSection(&(_m))
@@ -290,7 +291,7 @@ extern "C" {
   #define CPRT_THREAD_T HANDLE
   #define CPRT_THREAD_ENTRYPOINT DWORD WINAPI
   #define CPRT_THREAD_CREATE(_tid, _tstrt, _targ) do {\
-    DWORD _ignore, _err;\
+    DWORD _ignore;\
     _tid = CreateThread(NULL, 0, _tstrt, _targ, 0, &_ignore);\
     if (_tid == NULL) {\
       errno = GetLastError();\

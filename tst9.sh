@@ -1,14 +1,15 @@
 #!/bin/sh
 # tst9.sh - script to build and run the cprt test #9 (cpu affinity).
 
+fail() {
+  egrep "^test" tst.tmp
+  echo "FAIL at $(caller)"
+  exit 1
+}
 
-OPTS=""
-if echo "$OSTYPE" | egrep -i linux; then :
-  OPTS="-l pthread"
-fi
-
-gcc -Wall -o cprt_test $OPTS cprt.c cprt_test.c
-if [ $? -ne 0 ]; then exit 1; fi
+ok() {
+  echo "OK: $(egrep '^test' tst.tmp)"
+}
 
 
 # Disable core files

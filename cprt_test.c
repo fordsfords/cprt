@@ -13,12 +13,12 @@
 # is https://github.com/fordsfords/cprt
 */
 
+#include "cprt.h"
+
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <errno.h>
-
-#include "cprt.h"
 
 
 /* Options and their defaults */
@@ -181,9 +181,9 @@ int main(int argc, char **argv)
       fprintf(stderr, "test %d: STRTOK_PORT\n", o_testnum);
       fflush(stderr);
       str = strdup("abc,xyz,123");
-      for (word = strtok_r(str, ",", &context);
+      for (word = CPRT_STRTOK(str, ",", &context);
           word != NULL;
-          word = strtok_r(NULL, ",", &context)) {
+          word = CPRT_STRTOK(NULL, ",", &context)) {
         printf("word='%s'\n", word);
       }
 
