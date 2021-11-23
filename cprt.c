@@ -1,5 +1,5 @@
-/* cprt.c - Test program for the definitions in cprt.h
- * This tries to be portable between Mac, Linux, and Windows.
+/* cprt.c - Module for portable functions that can't be done
+ *   with macros in the cprt.h file.
  * See https://github.com/fordsfords/cprt
  */
 /*
