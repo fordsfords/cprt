@@ -37,7 +37,11 @@ extern "C" {
 #endif
 
 /* Macro to approximate the basename() function. */
-#define CPRT_BASENAME(_p) ((strrchr(_p, '/') == NULL) ? (_p) : (strrchr(_p, '/')+1))
+#if defined(_WIN32)
+  #define CPRT_BASENAME(_p) ((strrchr(_p, '\\') == NULL) ? (_p) : (strrchr(_p, '\\')+1))
+#else
+  #define CPRT_BASENAME(_p) ((strrchr(_p, '/') == NULL) ? (_p) : (strrchr(_p, '/')+1))
+#endif
 
 /* Macro to print errno in human-readable form and exit(1). */
 #define CPRT_PERRNO(cprt_perrno_in_str_) do { \
@@ -311,16 +315,30 @@ extern "C" {
     CPRT_EOK0(errno = pthread_join(_tid, NULL))
 #endif
 
+#define CPRT_CPU_ZERO(_cprt_cpuset) do { \
+  uint64_t *_cprt_cpuset_p = (_cprt_cpuset); \
+  *_cprt_cpuset_p = 0; \
+} while (0)
+
+#define CPRT_CPU_SET(_cprt_cpunum, _cprt_cpuset) do { \
+  uint64_t *_cprt_cpuset_p = (_cprt_cpuset); \
+  if (_cprt_cpunum == 0) { \
+    *_cprt_cpuset_p |= 1; \
+  } else { \
+    *_cprt_cpuset_p |= (1ull << _cprt_cpunum); \
+  } \
+} while (0)
+
 
 /* Functions in cprt.c. */
 char *cprt_strerror(int errnum, char *buffer, size_t buf_sz);
 void cprt_set_affinity(uint64_t in_mask);
 #if defined(_WIN32)
-  extern char* optarg;
-  extern int optopt;
-  extern int optind;
-  extern int opterr;
-  int getopt(int argc, char* const argv[], const char* optstring);
+extern char* optarg;
+extern int optopt;
+extern int optind;
+extern int opterr;
+int getopt(int argc, char* const argv[], const char* optstring);
 #endif
 
 #if defined(__cplusplus)

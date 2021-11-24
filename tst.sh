@@ -1,5 +1,5 @@
 #!/bin/sh
-# tst.sh - script to build and run the cprt test program.
+# tst.sh - script to run the cprt test program.
 
 fail() {
   egrep "^test" tst.tmp
@@ -56,6 +56,36 @@ if [ $? -eq 0 ]; then fail; fi
 if egrep "This should fail" tst.tmp >/dev/null; then :; else :
   fail; fi
 egrep -v "^test |This should fail" tst.tmp >tst.tmp1
+if [ -s tst.tmp1 ]; then fail; fi
+ok
+
+if which gdate >/dev/null 2>&1; then gdate +"%T.%N"
+else date +"%T.%N"
+fi
+./cprt_test -t 5 >tst.tmp 2>&1
+if [ $? -ne 0 ]; then fail; fi
+egrep -v "^test " tst.tmp >tst.tmp1
+if [ -s tst.tmp1 ]; then fail; fi
+ok
+if which gdate >/dev/null 2>&1; then gdate +"%T.%N"
+else date +"%T.%N"
+fi
+
+if which gdate >/dev/null 2>&1; then gdate +"%T.%N"
+else date +"%T.%N"
+fi
+./cprt_test -t 6 >tst.tmp 2>&1
+if [ $? -ne 0 ]; then fail; fi
+egrep -v "^test " tst.tmp >tst.tmp1
+if [ -s tst.tmp1 ]; then fail; fi
+ok
+if which gdate >/dev/null 2>&1; then gdate +"%T.%N"
+else date +"%T.%N"
+fi
+
+./cprt_test -t 7 >tst.tmp 2>&1
+if [ $? -ne 0 ]; then fail; fi
+egrep -v "^test |word='abc'|word='xyz'|word='123'" tst.tmp >tst.tmp1
 if [ -s tst.tmp1 ]; then fail; fi
 ok
 

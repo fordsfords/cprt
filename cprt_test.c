@@ -178,7 +178,7 @@ int main(int argc, char **argv)
     {
       char *str, *word, *context;
 
-      fprintf(stderr, "test %d: STRTOK_PORT\n", o_testnum);
+      fprintf(stderr, "test %d: CPRT_STRTOK\n", o_testnum);
       fflush(stderr);
       str = strdup("abc,xyz,123");
       for (word = CPRT_STRTOK(str, ",", &context);
@@ -231,8 +231,16 @@ int main(int argc, char **argv)
     case 9:
     {
       CPRT_THREAD_T my_thread_id;
+      uint64_t cpuset = 0xdeadbeef;
       fprintf(stderr, "test %d: CPRT_SET_AFFINITY\n", o_testnum);
       fflush(stderr);
+
+      CPRT_CPU_ZERO(&cpuset);
+      CPRT_ASSERT(cpuset == 0);
+      CPRT_CPU_SET(3, &cpuset);
+      CPRT_ASSERT(cpuset == 0x8);
+      CPRT_CPU_SET(0, &cpuset);
+      CPRT_ASSERT(cpuset == 0x9);
 
       CPRT_THREAD_CREATE(my_thread_id, thread_test_9, NULL);
       CPRT_THREAD_JOIN(my_thread_id);
