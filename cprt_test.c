@@ -49,6 +49,8 @@ CPRT_THREAD_ENTRYPOINT thread_test_8(void *in_arg)
 {
   int *int_arg = (int *)in_arg;
   int got_lock;
+  struct timespec ts1, ts2;
+  int ts_diff;
 
   CPRT_ASSERT(int_arg == &my_thread_arg);
   CPRT_ASSERT(my_thread_arg == o_testnum);
@@ -57,7 +59,14 @@ CPRT_THREAD_ENTRYPOINT thread_test_8(void *in_arg)
   CPRT_ASSERT(! got_lock);
   CPRT_MUTEX_LOCK(my_thread_arg_mutex);
   CPRT_ASSERT(my_thread_arg == o_testnum+1);
+
+  CPRT_GETTIME(&ts1);
   CPRT_SLEEP_MS(50);
+  CPRT_GETTIME(&ts2);
+  CPRT_DIFF_TS(ts_diff, ts2, ts1);
+  printf("50ms = %dns\n", ts_diff);
+  CPRT_ASSERT(ts_diff > 40000000 && ts_diff < 60000000);
+
   my_thread_arg++;  /* Becomes o_testnum+2. */
   CPRT_MUTEX_UNLOCK(my_thread_arg_mutex);
 
@@ -119,6 +128,8 @@ int main(int argc, char **argv)
   }  /* while getopt */
 
   if (optind != argc) { usage("Extra parameter(s)"); }
+
+  CPRT_INITTIME();
 
   switch(o_testnum) {
     case 0:

@@ -20,6 +20,8 @@
 #else  /* Unix */
   #include <unistd.h>
   #include <stdlib.h>
+  #include <errno.h>
+  #include <time.h>
   #include <pthread.h>
   #if defined(__APPLE__)
     #include <dispatch/dispatch.h>
@@ -330,10 +332,32 @@ extern "C" {
 } while (0)
 
 
-/* Functions in cprt.c. */
+#define CPRT_INITTIME cprt_inittime
+#if defined(_WIN32)
+  struct timespec {
+    long tv_sec;
+    long tv_nsec;
+  }
+  #define CPRT_GETTIME(_ts) cprt_gettime(_ts)
+#elif defined(__APPLE__)
+  #define CPRT_GETTIME(_ts) clock_gettime(CLOCK_MONOTONIC_RAW, _ts)
+#else  /* Non-Apple Unixes */
+  #define CPRT_GETTIME(_ts) clock_gettime(CLOCK_MONOTONIC, _ts)
+#endif
+#define CPRT_DIFF_TS(diff_ts_result_ns_, diff_ts_end_ts_, diff_ts_start_ts_) do { \
+  (diff_ts_result_ns_) = (((uint64_t)diff_ts_end_ts_.tv_sec \
+                           - (uint64_t)diff_ts_start_ts_.tv_sec) * 1000000000 \
+                          + (uint64_t)diff_ts_end_ts_.tv_nsec) \
+                         - (uint64_t)diff_ts_start_ts_.tv_nsec; \
+} while (0)  /* DIFF_TS */
+
+/* externals in cprt.c. */
 char *cprt_strerror(int errnum, char *buffer, size_t buf_sz);
 void cprt_set_affinity(uint64_t in_mask);
+void cprt_inittime();
+
 #if defined(_WIN32)
+int cprt_win_gettime(struct timespec *tp);
 extern char* optarg;
 extern int optopt;
 extern int optind;

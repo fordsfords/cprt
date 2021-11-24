@@ -91,7 +91,7 @@ ok
 
 ./cprt_test -t 8 >tst.tmp 2>&1
 if [ $? -ne 0 ]; then fail; fi
-egrep -v "^test " tst.tmp >tst.tmp1
+egrep -v "^test |^50ms = " tst.tmp >tst.tmp1
 if [ -s tst.tmp1 ]; then fail; fi
 ok
 

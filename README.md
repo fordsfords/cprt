@@ -12,20 +12,23 @@ Use these instead of the OS-specific versions:
 * CPRT_ENULL
 * CPRT_ASSERT
 * CPRT_ABORT
+* CPRT_ATOI - use instead of atoi(), see https://blog.geeky-boy.com/2014/04/strtoul-preferred-over-atoi.html
 * CPRT_STRDEF - see https://stackoverflow.com/questions/25410690
 * CPRT_VOL32 - see http://blog.geeky-boy.com/2014/06/clangllvm-optimize-o3-understands-free.html
 * CPRT_NET_START - use before doing any network-related functions.
 * CPRT_NET_CLEANUP - use after finished doing network-related functions.
-* CPRT_SNPRINTF
-* CPRT_STRDUP
-* CPRT_SLEEP_SEC
-* CPRT_SLEEP_MS
+* CPRT_SNPRINTF - use instead of snprintf() / _snprintf()
+* CPRT_STRDUP - use instead of strdup() / _strdup()
+* CPRT_SLEEP_SEC - use instead of sleep() / Sleep()
+* CPRT_SLEEP_MS - use instead of usleep() / Sleep()
+* CPRT_INITTIME - use before doing any CPRT_GETTIME
+* CPRT_GETTIME - use instead of clock_gettime() / QueryPerformanceCounter()
 * CPRT_STRTOK
 * CPRT_MUTEX_T, CPRT_MUTEX_INIT, CPRT_MUTEX_INIT_RECURSIVE, CPRT_MUTEX_LOCK, CPRT_MUTEX_TRYLOCK, CPRT_MUTEX_UNLOCK, CPRT_MUTEX_DELETE
 * CCPRT_SEM_T, CPRT_SEM_INIT, CPRT_SEM_DELETE, CPRT_SEM_POST, CPRT_SEM_WAIT
 * CPRT_THREAD_T, CPRT_THREAD_ENTRYPOINT, CPRT_THREAD_CREATE, CPRT_THREAD_EXIT, CPRT_THREAD_JOIN
 * CPRT_AFFINITY_MASK_T, CPRT_SET_AFFINITY
-* getopt, optarg, optopt, optind, opterr
+* getopt, optarg, optopt, optind, opterr - provided for Windows.
 
 # GNU Extensions
 
@@ -80,6 +83,25 @@ So I had to move some cprt functionality into a C module and explicitly set
 _GNU_SOURCE.
 So long as cprt [is reasonably careful](https://stackoverflow.com/a/44199427),
 "cprt.c" can safely be linked with code compiled without _GNU_SOURCE.
+
+## CPRT_GETTIME
+
+I wanted a portable nanosecond-resolution timer API.
+Unix has clock_gettime() and Windows has QueryPerformanceCounter().
+That only has 100ns resolution, but it's the best you can get without
+using the rdtsc instruction directly.
+
+Most of the performance work I do is on Linux,
+so I decided to make CPRT_GETTIME most efficient on Unixes,
+where it simply translates to a direct call to clock_gettime().
+
+On Windows it CPRT_GETTIME calls a C function in cprt.c that calls
+QueryPerformanceCounter() and makes the result look like clock_gettime().
+This is less efficient since it requires some math, which means that the
+CPRT_GETTIME function affects the execution time being measured more
+than is necessary.
+But since QueryPerformanceCounter() only resolves to 100ns,
+that extra execution time doesn't show up in the measurements.
 
 ## License
 

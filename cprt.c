@@ -13,8 +13,8 @@
 # is https://github.com/fordsfords/cprt
 */
 
-#if defined(_WIN32)
-#else  /* Unix */
+#if ! defined(_WIN32)
+/* Unix */
 #define _GNU_SOURCE
 #endif
 
@@ -25,6 +25,42 @@
 #include <time.h>
 #include <errno.h>
 
+#if defined(_WIN32)
+LARGE_INTEGER cprt_frequency;
+#endif
+
+
+#if defined(_WIN32)
+void cprt_inittime()
+{
+  QueryPerformanceFrequency(&cprt_frequency);
+}  /* cprt_inittime */
+
+void cprt_gettime(struct timespec *ts)
+{
+  LARGE_INTEGER ticks;
+  uint64_t ns;
+
+  QueryPerformanceCounter(&ticks);
+  ns = ticks.QuadPart;
+  ns *= 1000000000;
+  ns /= cprt_frequency.QuadPart;
+
+  ts->tv_sec = ns / 1000000000;
+  ts->tv_sec = ns % 1000000000;
+}  /* cprt_gettime */
+
+#elif defined(__APPLE__)
+void cprt_inittime()
+{
+}  /* cprt_inittime */
+
+#else  /* Non-Apple Unixes */
+void cprt_inittime()
+{
+}  /* cprt_inittime */
+
+#endif
 
 char *cprt_strerror(int errnum, char *buffer, size_t buf_sz)
 {
