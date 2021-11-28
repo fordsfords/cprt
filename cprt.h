@@ -79,6 +79,17 @@ extern "C" {
   } \
 } while (0)
 
+/* Use when -1 means error. */
+#define CPRT_EM1(cprt_em1_expr) do { \
+  if ((cprt_em1_expr) == -1) { \
+    int cprt_em1_errno = errno; \
+    char cprt_em1_errstr[1024]; \
+    CPRT_SNPRINTF(cprt_em1_errstr, sizeof(cprt_em1_errstr), "'%s' is -1", #cprt_em1_expr); \
+    errno = cprt_em1_errno; \
+    CPRT_PERRNO(cprt_em1_errstr); \
+  } \
+} while (0)
+
 #define CPRT_ASSERT(cprt_assert_cond) do { \
   if (! (cprt_assert_cond)) { \
     fprintf(stderr, "ERROR (%s:%d): ERROR: '%s' not true\n", \
