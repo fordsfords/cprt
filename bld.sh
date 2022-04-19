@@ -2,7 +2,7 @@
 
 
 OPTS=""
-if echo "$OSTYPE" | egrep -i linux; then :
+if echo "$OSTYPE" | egrep -i linux >/dev/null; then :
   OPTS="-l pthread"
 fi
 
