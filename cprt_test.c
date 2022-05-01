@@ -45,13 +45,15 @@ void help() {
 
 int my_thread_arg;
 CPRT_MUTEX_T my_thread_arg_mutex;
+CPRT_SPIN_T my_thread_arg_spinlock;
 
 CPRT_THREAD_ENTRYPOINT thread_test_8(void *in_arg)
 {
   int *int_arg = (int *)in_arg;
   int got_lock;
-  struct timespec ts1, ts2;
-  int ts_diff;
+  struct cprt_timespec ts1, ts2;
+  uint64_t ts_diff;
+  long counter;
 
   CPRT_ASSERT(int_arg == &my_thread_arg);
   CPRT_ASSERT(my_thread_arg == o_testnum);
@@ -65,8 +67,8 @@ CPRT_THREAD_ENTRYPOINT thread_test_8(void *in_arg)
   CPRT_SLEEP_MS(50);
   CPRT_GETTIME(&ts2);
   CPRT_DIFF_TS(ts_diff, ts2, ts1);
-  printf("50ms = %dns\n", ts_diff);
-  CPRT_ASSERT(ts_diff > 40000000 && ts_diff < 60000000);
+  printf("50ms = %"PRIu64"ns\n", ts_diff);
+  CPRT_ASSERT(ts_diff > 40000000 && ts_diff < 69000000);
 
   my_thread_arg++;  /* Becomes o_testnum+2. */
   CPRT_MUTEX_UNLOCK(my_thread_arg_mutex);
@@ -78,11 +80,66 @@ CPRT_THREAD_ENTRYPOINT thread_test_8(void *in_arg)
   CPRT_MUTEX_UNLOCK(my_thread_arg_mutex);
   CPRT_SLEEP_MS(50);
 
+  counter = 0;
+  CPRT_ASSERT(CPRT_ATOMIC_INC_VAL(&counter) == 1);
+  CPRT_ASSERT(CPRT_ATOMIC_INC_VAL(&counter) == 2);
+  CPRT_ASSERT(counter == 2);
+  CPRT_ASSERT(CPRT_ATOMIC_DEC_VAL(&counter) == 1);
+  CPRT_ASSERT(CPRT_ATOMIC_DEC_VAL(&counter) == 0);
+  CPRT_ASSERT(counter == 0);
+
   CPRT_THREAD_EXIT;
   return 0;
 }  /* thread_test_8 */
 
+CPRT_THREAD_ENTRYPOINT thread_test_8_1(void *in_arg)
+{
+  int *int_arg = (int *)in_arg;
+  int got_lock;
+  struct cprt_timespec ts1, ts2;
+  uint64_t ts_diff;
+  long counter;
 
+  CPRT_ASSERT(int_arg == &my_thread_arg);
+  CPRT_ASSERT(my_thread_arg == o_testnum);
+
+  CPRT_SPIN_TRYLOCK(got_lock, my_thread_arg_spinlock);
+  CPRT_ASSERT(! got_lock);
+  CPRT_SPIN_LOCK(my_thread_arg_spinlock);
+  CPRT_ASSERT(my_thread_arg == o_testnum+1);
+
+  CPRT_GETTIME(&ts1);
+  CPRT_SLEEP_MS(50);
+  CPRT_GETTIME(&ts2);
+  CPRT_DIFF_TS(ts_diff, ts2, ts1);
+  printf("50ms = %"PRIu64"ns\n", ts_diff);
+  CPRT_ASSERT(ts_diff > 40000000 && ts_diff < 69000000);
+
+  my_thread_arg++;  /* Becomes o_testnum+2. */
+  CPRT_SPIN_UNLOCK(my_thread_arg_spinlock);
+
+  CPRT_SLEEP_MS(10);
+  CPRT_SPIN_LOCK(my_thread_arg_spinlock);
+  CPRT_ASSERT(my_thread_arg == o_testnum+3);
+  my_thread_arg++;  /* Becomes o_testnum+4. */
+  CPRT_SPIN_UNLOCK(my_thread_arg_spinlock);
+  CPRT_SLEEP_MS(50);
+
+  counter = 0;
+  CPRT_ASSERT(CPRT_ATOMIC_INC_VAL(&counter) == 1);
+  CPRT_ASSERT(CPRT_ATOMIC_INC_VAL(&counter) == 2);
+  CPRT_ASSERT(counter == 2);
+  CPRT_ASSERT(CPRT_ATOMIC_DEC_VAL(&counter) == 1);
+  CPRT_ASSERT(CPRT_ATOMIC_DEC_VAL(&counter) == 0);
+  CPRT_ASSERT(counter == 0);
+
+  CPRT_THREAD_EXIT;
+  return 0;
+}  /* thread_test_8_1 */
+
+
+/* Affinity stuff not for Mac. */
+#if ! defined(__APPLE__)
 CPRT_THREAD_ENTRYPOINT thread_test_9(void *in_arg)
 {
   uint64_t affinity = 0x01;
@@ -107,6 +164,7 @@ CPRT_THREAD_ENTRYPOINT thread_test_9(void *in_arg)
   CPRT_THREAD_EXIT;
   return 0;
 }  /* thread_test_9 */
+#endif
 
 
 int main(int argc, char **argv)
@@ -144,7 +202,15 @@ int main(int argc, char **argv)
     case 1:
     {
       FILE *fp;
+      struct cprt_timeval tv;
+      struct tm out_tm;
       fprintf(stderr, "test %d: CPR_NULL, CPRT_PERRNO\n", o_testnum);
+      CPRT_EOK0(CPRT_TIMEOFDAY(&tv, NULL));
+      CPRT_LOCALTIME_R(&(tv.tv_sec), &out_tm);
+      fprintf(stderr, "%04d/%02d/%02d %02d:%02d:%02d.%06d\n",
+        (int)out_tm.tm_year + 1900, (int)out_tm.tm_mon + 1, (int)out_tm.tm_mday,
+        (int)out_tm.tm_hour, (int)out_tm.tm_min, (int)out_tm.tm_sec,
+        (int)tv.tv_usec);
       fflush(stderr);
       CPRT_ENULL(fp = fopen("cprt.c", "r")); 
       fclose(fp); 
@@ -243,8 +309,49 @@ int main(int argc, char **argv)
       break;
     }
 
+    case 81:
+    {
+      CPRT_THREAD_T my_thread_id;
+      int got_lock;
+      fprintf(stderr, "test %d: CPRT_THREAD_CREATE\n", o_testnum);
+      fflush(stderr);
+
+      CPRT_SPIN_INIT(my_thread_arg_spinlock);
+      CPRT_SPIN_LOCK(my_thread_arg_spinlock);
+      my_thread_arg = o_testnum;
+
+      CPRT_THREAD_CREATE(my_thread_id, thread_test_8_1, &my_thread_arg);
+
+      CPRT_SLEEP_MS(50);
+      CPRT_ASSERT(my_thread_arg == o_testnum);
+      my_thread_arg++;  /* Becomes o_testnum+1 */
+      CPRT_SPIN_UNLOCK(my_thread_arg_spinlock);
+
+      CPRT_SLEEP_MS(10);
+      CPRT_SPIN_TRYLOCK(got_lock, my_thread_arg_spinlock);
+      CPRT_ASSERT(! got_lock);
+      while (! got_lock) {
+        CPRT_SPIN_TRYLOCK(got_lock, my_thread_arg_spinlock);
+      }
+      CPRT_ASSERT(my_thread_arg == o_testnum+2);
+
+      my_thread_arg++;  /* Becomes o_testnum+3 */
+      CPRT_SPIN_UNLOCK(my_thread_arg_spinlock);
+      CPRT_SLEEP_MS(50);
+
+      CPRT_THREAD_JOIN(my_thread_id);
+      CPRT_ASSERT(my_thread_arg == o_testnum+4);
+
+      CPRT_SPIN_DELETE(my_thread_arg_spinlock);
+
+      break;
+    }
+
     case 9:
     {
+#if defined(__APPLE__)
+      fprintf(stderr, "test %d: ERROR, threading not supported for Mac\n", o_testnum);
+#else
       CPRT_THREAD_T my_thread_id;
       uint64_t cpuset = 0xdeadbeef;
       fprintf(stderr, "test %d: CPRT_SET_AFFINITY\n", o_testnum);
@@ -259,6 +366,7 @@ int main(int argc, char **argv)
 
       CPRT_THREAD_CREATE(my_thread_id, thread_test_9, NULL);
       CPRT_THREAD_JOIN(my_thread_id);
+#endif
 
       break;
     }

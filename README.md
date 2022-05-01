@@ -1,6 +1,9 @@
 # cprt
 A set of definitions to allow easier development of code that is portable
-between Mac, Windows, and Linux (and sometimes Solaris).
+between Windows and Linux (and sometimes Solaris).
+Many of the definitions will also work with Mac, but I've sort of given up
+trying to write high-performance code on Mac.
+So I don't have Mac versions of threads, mutexes, or atomics.
 
 # APIs
 
@@ -21,15 +24,18 @@ Use these instead of the OS-specific versions:
 * CPRT_STRDUP - use instead of strdup() / _strdup()
 * CPRT_SLEEP_SEC - use instead of sleep() / Sleep()
 * CPRT_SLEEP_MS - use instead of usleep() / Sleep()
-* CPRT_INITTIME - use before doing any CPRT_GETTIME
-* CPRT_GETTIME - use instead of clock_gettime() / QueryPerformanceCounter()
+* CPRT_GETTIME, CPRT_INITTIME, cprt_timeval - use instead of clock_gettime() / QueryPerformanceCounter()
 * CPRT_STRTOK
+* CPRT_ATOMIC_INC_VAL, CPRT_ATOMIC_DEC_VAL, CPRT_ATOMIC_EXCHANGE
 * CPRT_MUTEX_T, CPRT_MUTEX_INIT, CPRT_MUTEX_INIT_RECURSIVE, CPRT_MUTEX_LOCK, CPRT_MUTEX_TRYLOCK, CPRT_MUTEX_UNLOCK, CPRT_MUTEX_DELETE
+* CPRT_SPIN_T, CPRT_SPIN_INIT, CPRT_SPIN_LOCK, CPRT_SPIN_TRYLOCK, CPRT_SPIN_UNLOCK, CPRT_SPIN_DELETE
 * CCPRT_SEM_T, CPRT_SEM_INIT, CPRT_SEM_DELETE, CPRT_SEM_POST, CPRT_SEM_WAIT
 * CPRT_THREAD_T, CPRT_THREAD_ENTRYPOINT, CPRT_THREAD_CREATE, CPRT_THREAD_EXIT, CPRT_THREAD_JOIN
 * CPRT_AFFINITY_MASK_T, CPRT_SET_AFFINITY
-* cprt_getopt, cprt_optarg, cprt_optopt, cprt_optind, cprt_opterr -
 portable getopt(). See [cprt_getopt()](#cprt_getopt).
+* CPRT_TIMEOFDAY, cprt_timeval - equiv of gettimeofday
+* CPRT_LOCALTIME_R - equiv of localtime_r
+* cprt_getopt, cprt_optarg, cprt_optopt, cprt_optind, cprt_opterr -
 
 # GNU Extensions
 

@@ -28,40 +28,76 @@
 
 #if defined(_WIN32)
 LARGE_INTEGER cprt_frequency;
+LARGE_INTEGER cprt_start_time;
 #endif
 
 
 #if defined(_WIN32)
+int cprt_timeofday(struct cprt_timeval *tv, void *unused_tz)
+{
+  FILETIME tfile;
+  uint64_t time;
+  /* Static constant to remove time skew between FILETIME and POSIX
+   * time.  POSIX and Win32 use different epochs (Jan. 1, 1970 v.s.
+   * Jan. 1, 1601).  The following constant defines the difference
+   * in 100ns ticks.  */
+  static const uint64_t EPOCH = ((uint64_t) 116444736000000000ULL);
+
+  GetSystemTimeAsFileTime (&tfile);
+  time = (uint64_t)tfile.dwLowDateTime;
+  time += ((uint64_t)tfile.dwHighDateTime) << 32;
+
+  tv->tv_sec = (long)((time - EPOCH) / 10000000L);
+  tv->tv_usec = (long)(((time - EPOCH) / 10) % 1000000L);
+
+  return 0;
+}  /* cprt_timeofday */
+
+
 void cprt_inittime()
 {
   QueryPerformanceFrequency(&cprt_frequency);
+  QueryPerformanceCounter(&cprt_start_time);
 }  /* cprt_inittime */
 
-void cprt_gettime(struct timespec *ts)
+
+void cprt_gettime(struct cprt_timespec *ts)
 {
   LARGE_INTEGER ticks;
   uint64_t ns;
 
   QueryPerformanceCounter(&ticks);
-  ns = ticks.QuadPart;
-  ns *= 1000000000;
-  ns /= cprt_frequency.QuadPart;
+  ns = ticks.QuadPart - cprt_start_time.QuadPart;
+  ns *= (1000000000/cprt_frequency.QuadPart);
 
-  ts->tv_sec = ns / 1000000000;
-  ts->tv_sec = ns % 1000000000;
+  ts->tv_sec = (time_t)(ns / 1000000000);
+  ts->tv_nsec = (long)(ns % 1000000000);
 }  /* cprt_gettime */
+
 
 #elif defined(__APPLE__)
 void cprt_inittime()
 {
 }  /* cprt_inittime */
 
+
 #else  /* Non-Apple Unixes */
 void cprt_inittime()
 {
 }  /* cprt_inittime */
 
+
 #endif
+
+
+void cprt_localtime_r(time_t *timep, struct tm *result)
+{
+#if defined(_WIN32)
+  int i = localtime_s(result, timep);
+#else  /* Unixes */
+  localtime_r(timep, result);
+#endif
+}  /* cprt_localtime_r */
 
 char *cprt_strerror(int errnum, char *buffer, size_t buf_sz)
 {
