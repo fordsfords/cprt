@@ -103,7 +103,6 @@ Use these instead of the OS-specific versions:
 * CCPRT_SEM_T, CPRT_SEM_INIT, CPRT_SEM_DELETE, CPRT_SEM_POST, CPRT_SEM_WAIT
 * CPRT_THREAD_T, CPRT_THREAD_ENTRYPOINT, CPRT_THREAD_CREATE, CPRT_THREAD_EXIT, CPRT_THREAD_JOIN
 * CPRT_AFFINITY_MASK_T, CPRT_SET_AFFINITY
-portable getopt(). See [cprt_getopt()](#cprt_getopt).
 * CPRT_TIMEOFDAY, cprt_timeval - equiv of gettimeofday
 * CPRT_LOCALTIME_R - equiv of localtime_r
 * cprt_getopt, cprt_optarg, cprt_optopt, cprt_optind, cprt_opterr -
