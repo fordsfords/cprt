@@ -370,12 +370,13 @@ void cprt_inittime();
 
 #if defined(_WIN32)
 int cprt_win_gettime(struct timespec *tp);
-extern char* optarg;
-extern int optopt;
-extern int optind;
-extern int opterr;
-int getopt(int argc, char* const argv[], const char* optstring);
 #endif
+
+extern char* cprt_optarg;
+extern int cprt_optopt;
+extern int cprt_optind;
+extern int cprt_opterr;
+int cprt_getopt(int argc, char* const argv[], const char* optstring);
 
 #if defined(__cplusplus)
 }

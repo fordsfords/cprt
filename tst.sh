@@ -45,8 +45,7 @@ ok
 
 ./cprt_test -t 3 >tst.tmp 2>&1
 if [ $? -eq 0 ]; then fail; fi
-if egrep "this_should_fail" tst.tmp >/dev/null; then :; else :
-  fail; fi
+if egrep "this_should_fail" tst.tmp >/dev/null; then :; else fail; fi
 egrep -iv "^test |this_should_fail.*invalid argument" tst.tmp >tst.tmp1
 if [ -s tst.tmp1 ]; then fail; fi
 ok
@@ -95,3 +94,74 @@ egrep -v "^test |^50ms = " tst.tmp >tst.tmp1
 if [ -s tst.tmp1 ]; then fail; fi
 ok
 
+# See "tst9.sh" for test 9.
+
+# Test getopt.
+
+./cprt_test -t 10 >tst.tmp 2>&1
+if [ $? -ne 0 ]; then fail; fi
+if egrep "^Test=10$" tst.tmp >/dev/null; then :; else fail; fi
+egrep -v "^test 10|^Test=10$" tst.tmp >tst.tmp1
+if [ -s tst.tmp1 ]; then fail; fi
+ok
+
+./cprt_test -t 10 abc >tst.tmp 2>&1
+if [ $? -ne 0 ]; then fail; fi
+if egrep "^Test=10, Argv\[3\]='abc'$" tst.tmp >/dev/null; then :; else fail; fi
+egrep -v "^test 10|^Test=10, Argv\[3\]='abc'$" tst.tmp >tst.tmp1
+if [ -s tst.tmp1 ]; then fail; fi
+ok
+
+./cprt_test -t10 - >tst.tmp 2>&1
+if [ $? -ne 0 ]; then fail; fi
+if egrep "^Test=10, Argv\[2\]='-'$" tst.tmp >/dev/null; then :; else fail; fi
+egrep -v "^test 10|^Test=10, Argv\[2\]='-'$" tst.tmp >tst.tmp1
+if [ -s tst.tmp1 ]; then fail; fi
+ok
+
+./cprt_test -t10 -- -abc >tst.tmp 2>&1
+if [ $? -ne 0 ]; then fail; fi
+if egrep "^Test=10, Argv\[3\]='-abc'$" tst.tmp >/dev/null; then :; else fail; fi
+egrep -v "^test 10|^Test=10, Argv\[3\]='-abc'$" tst.tmp >tst.tmp1
+if [ -s tst.tmp1 ]; then fail; fi
+ok
+
+./cprt_test -t >tst.tmp 2>&1
+if [ $? -eq 0 ]; then fail; fi
+if egrep "^Error, '-t' requires value\.$" tst.tmp >/dev/null; then :; else fail; fi
+if egrep "^cprt_optopt='t', Use '-h' for help$" tst.tmp >/dev/null; then :; else fail; fi
+egrep -v "cprt_optopt='t', Use '-h' for help|Error, '-t' requires value\." tst.tmp >tst.tmp1
+if [ -s tst.tmp1 ]; then fail; fi
+ok
+
+./cprt_test -: >tst.tmp 2>&1
+if [ $? -eq 0 ]; then fail; fi
+if egrep "^Error, ':' not a valid option character\.$" tst.tmp >/dev/null; then :; else fail; fi
+if egrep "^cprt_optopt=':', Use '-h' for help$" tst.tmp >/dev/null; then :; else fail; fi
+egrep -v "cprt_optopt=':', Use '-h' for help|Error, ':' not a valid option character\." tst.tmp >tst.tmp1
+if [ -s tst.tmp1 ]; then fail; fi
+ok
+
+./cprt_test "- " >tst.tmp 2>&1
+if [ $? -eq 0 ]; then fail; fi
+if egrep "^Error, argv\[1\] has non-printable character\.$" tst.tmp >/dev/null; then :; else fail; fi
+if egrep "^cprt_optopt=' ', Use '-h' for help$" tst.tmp >/dev/null; then :; else fail; fi
+egrep -v "cprt_optopt=' ', Use '-h' for help|Error, argv\[1\] has non-printable character\." tst.tmp >tst.tmp1
+if [ -s tst.tmp1 ]; then fail; fi
+ok
+
+./cprt_test -hxyz >tst.tmp 2>&1
+if [ $? -eq 0 ]; then fail; fi
+if egrep "^Error, '-h' must have no value\.$" tst.tmp >/dev/null; then :; else fail; fi
+if egrep "^cprt_optopt='h', Use '-h' for help$" tst.tmp >/dev/null; then :; else fail; fi
+egrep -v "cprt_optopt='h', Use '-h' for help|Error, '-h' must have no value\." tst.tmp >tst.tmp1
+if [ -s tst.tmp1 ]; then fail; fi
+ok
+
+./cprt_test -t 10 -x >tst.tmp 2>&1
+if [ $? -eq 0 ]; then fail; fi
+if egrep "^Error, 'x' not a defined option.$" tst.tmp >/dev/null; then :; else fail; fi
+if egrep "^cprt_optopt='x', Use '-h' for help$" tst.tmp >/dev/null; then :; else fail; fi
+egrep -v "cprt_optopt='x', Use '-h' for help|Error, 'x' not a defined option." tst.tmp >tst.tmp1
+if [ -s tst.tmp1 ]; then fail; fi
+ok

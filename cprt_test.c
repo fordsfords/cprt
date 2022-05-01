@@ -25,7 +25,7 @@
 int o_testnum = 0;
 
 
-char usage_str[] = "Usage: cprt_test [-h] [-t testnum]";
+char usage_str[] = "Usage: cprt_test [-h] [-t testnum] [unused_arg]";
 
 void usage(char *msg) {
   if (msg) fprintf(stderr, "%s\n", msg);
@@ -36,8 +36,9 @@ void usage(char *msg) {
 void help() {
   fprintf(stderr, "%s\n", usage_str);
   fprintf(stderr, "where:\n"
-                  "  -h : print help\n"
-                  "  -t testnum : run specified test\n");
+      "  -h : print help\n"
+      "  -t testnum : run specified test\n"
+      "  unused_arg : optional argument printed in test 10 (if supplied)\n");
   exit(0);
 }
 
@@ -114,20 +115,23 @@ int main(int argc, char **argv)
 
   CPRT_NET_START;
 
-  while ((opt = getopt(argc, argv, "ht:")) != EOF) {
+  while ((opt = cprt_getopt(argc, argv, "ht:")) != EOF) {
     switch (opt) {
       case 't':
-        CPRT_ATOI(optarg, o_testnum);
+        CPRT_ATOI(cprt_optarg, o_testnum);
         break;
       case 'h':
         help();
         break;
+      case '?':
+        fprintf(stderr, "cprt_optopt='%c', Use '-h' for help\n", cprt_optopt);
+        exit(1);
+        break;
       default:
-        usage(NULL);
+        fprintf(stderr, "Undefined option '%c'\n", opt);
+        exit(1);
     }  /* switch opt */
-  }  /* while getopt */
-
-  if (optind != argc) { usage("Extra parameter(s)"); }
+  }  /* while cprt_getopt */
 
   CPRT_INITTIME();
 
@@ -255,6 +259,19 @@ int main(int argc, char **argv)
 
       CPRT_THREAD_CREATE(my_thread_id, thread_test_9, NULL);
       CPRT_THREAD_JOIN(my_thread_id);
+
+      break;
+    }
+
+    case 10:
+    {
+      fprintf(stderr, "test %d: cprt_getopt\n", o_testnum);
+      if (cprt_optind >= argc) {
+        fprintf(stderr, "Test=10\n");
+      } else {
+        fprintf(stderr, "Test=10, Argv[%d]='%s'\n",
+            cprt_optind, argv[cprt_optind]);
+      }
 
       break;
     }

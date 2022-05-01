@@ -28,7 +28,8 @@ Use these instead of the OS-specific versions:
 * CCPRT_SEM_T, CPRT_SEM_INIT, CPRT_SEM_DELETE, CPRT_SEM_POST, CPRT_SEM_WAIT
 * CPRT_THREAD_T, CPRT_THREAD_ENTRYPOINT, CPRT_THREAD_CREATE, CPRT_THREAD_EXIT, CPRT_THREAD_JOIN
 * CPRT_AFFINITY_MASK_T, CPRT_SET_AFFINITY
-* getopt, optarg, optopt, optind, opterr - provided for Windows.
+* cprt_getopt, cprt_optarg, cprt_optopt, cprt_optind, cprt_opterr -
+portable getopt(). See [cprt_getopt()](#cprt_getopt).
 
 # GNU Extensions
 
@@ -102,6 +103,75 @@ CPRT_GETTIME function affects the execution time being measured more
 than is necessary.
 But since QueryPerformanceCounter() only resolves to 100ns,
 that extra execution time doesn't show up in the measurements.
+
+## cprt_getopt
+
+I wanted a public domain (CC0) version of getopt.
+All the open source versions I could find have some kind of attribution
+requirement, and I want there to be NO barriers to using this code.
+So I wrote my own from scratch.
+
+It is used the same as regular getopt() except all the symbols are prefixed
+with "cprt_".
+Thus, the API consists of:
+* cprt_getopt() - callable function.
+* cprt_optind - index of next argv.
+* cprt_opterr - set to zero to suppress printing errors.
+* cprt_optarg - points to option value.
+* cprt_optopt - if cprt_getopt() returns '?',
+this gives the option character that produced the error.
+
+The cprt_getopt() API provides a subset of the behaviors of a "full"
+getopt() that is typically provided by the OS's runtime library.
+But there is no universal agreement on the exact behaviors of getopt().
+BSD is different from GNU is different from POSIX is different from...
+
+Part of the reason for the variation is that many ancient Unix programs
+were developed without a standard getopt() parser,
+and instead just parsed their command lines with their own custom code.
+This has led to different programs supporting different behaviors.
+Multiply that by the number of different Unixes out there and you get a
+basic agreement on how options are parsed, but disagreement on some details.
+
+This could cause a problem if a bunch of shell scripts were written on
+one Unix is tried on a different Unix - command invocations that work on
+one don't work on another.
+For example, see [Using sed "in place" (gnu vs bsd)](http://blog.geeky-boy.com/2020/11/using-sed-in-place-gnu-vs-bsd.html).
+
+So anyway, when I write a program,
+I don't feel the need to be fully consistent with every other program,
+so I don't mind supporting a subset of use patterns.
+For example, long options are not supported.
+
+To illustrate some supported use patterns,
+here is the usage string for the `cprt_test` program:
+
+````
+Usage: cprt_test [-h] [-t testnum] [unused_arg]
+````
+
+Here are some valid ways to use it:
+* `cprt_test -t 10 -h xyz` - xyz is the unused_arg.
+* `cprt_test -h -t10 xyz` - can eliminate space between -t and it value.
+* `cprt_test -t10 -- -x` - can have "-x" as the unused_arg, but need to use
+"--" to end option processing.
+
+Here is an invalid way to use it:
+* `cprt_test -ht 10` - some option parsers allow multiple options to be supplied
+together.
+For those that require values, subsequent argvs are used to satisfy them.
+The `cprt_getopt()` does not support this.
+Each option must be in its own argv.
+
+A few other misc features typical of getopt():
+* By default, `cprt_getopt()` prints any errors to standard error.
+If you want to suppress those prints,
+change the global cprt_opterr to 0.
+* If you want to re-scan the command line,
+you can just set `cprt_optind` to 1 before your next call to `cprt_getopt()`.
+* You can also change the globals `argv` and `argc` to parse other
+tokenized input.
+Again, set `cprt_optind` to 1.
 
 ## License
 
