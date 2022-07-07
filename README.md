@@ -4,16 +4,14 @@ between Windows and Linux (and sometimes Solaris).
 
 # Table of contents
 
-# Table of contents
-
 - [cprt](#cprt)
 - [Table of contents](#table-of-contents)
 - [INTRODUCTION](#introduction)
-- [GNU Extensions](#gnu-extensions)
 - [APIs](#apis)
   - [CPRT_GETTIME](#cprt_gettime)
   - [cprt_getopt](#cprt_getopt)
-  - [License](#license)
+- [GNU Extensions](#gnu-extensions)
+- [License](#license)
 
 <sup>(table of contents from https://luciopaiva.com/markdown-toc/)</sup>
 
@@ -21,60 +19,6 @@ between Windows and Linux (and sometimes Solaris).
 
 A set of definitions to allow easier development of code that is portable
 between Windows and Linux (and usually Solaris and Mac).
-
-# GNU Extensions
-
-When writing code for Linux, you can choose between two overall sets of
-runtime library APIs: portable or GNU-specific.
-GNU-specific code generally has the line:
-````c
-#define _GNU_SOURCE
-````
-at the top of the source file, preceided only by whitespace and/or
-comments.
-
-To [quote Rich Felker](https://stackoverflow.com/a/5583764):
-> If you define _GNU_SOURCE, you will get:
-> 
-> 1. access to lots of nonstandard GNU/Linux extension functions
-> 2. access to traditional functions which were omitted from the POSIX standard (often for good reason, such as being replaced with better alternatives, or being tied to particular legacy implementations)
-> 3. access to low-level functions that cannot be portable, but that you sometimes need for implementing system utilities like mount, ifconfig, etc.
-> 4. broken behavior for lots of POSIX-specified functions, where the GNU folks disagreed with the standards committee on how the functions should behave and decided to do their own thing.
-
-The whole point of cprt is to provide a common method of accessing
-functionality that is generally not portable across platforms.
-It's not necessarily that programs using cprt should be written portably,
-just that they can use non-portable functionality in a common way.
-
-This means that cprt should be usable by programmers who define _GNU_SOURCE
-in their source files, and by programmers who do not.
-
-This becomes problematic for certain corner cases where cprt uses an API
-that changes behavior between _GNU_SOURCE and not _GNU_SOURCE.
-For example, according to https://linux.die.net/man/3/strerror_r
-
-> int strerror_r(int errnum, char *buf, size_t buflen); /* XSI-compliant */
->
-> char *strerror_r(int errnum, char *buf, size_t buflen); /* GNU-specific */
->
-> ... It returns the error string in the user-supplied buffer buf of length buflen.
->
-> ... The GNU-specific strerror_r() returns a pointer to a string containing the error message. This may be either a pointer to a string that the function stores in buf, or a pointer to some (immutable) static string (in which case buf is unused).
-
-I.e. if you write code that calls strerror_r(), you *must* know which version
-you are getting.
-
-This is why I need a ".c" file to go with cprt.
-
-My original cprt was fully-contained within a ".h" file,
-but I ran into problems where I needed _GNU_SOURCE for setting CPU affinity,
-but I did not want cprt to require users to compile their programs with
-_GNU_SOURCE.
-
-So I had to move some cprt functionality into a C module and explicitly set
-_GNU_SOURCE.
-So long as cprt [is reasonably careful](https://stackoverflow.com/a/44199427),
-"cprt.c" can safely be linked with code compiled without _GNU_SOURCE.
 
 # APIs
 
@@ -197,7 +141,61 @@ you can just set `cprt_optind` to 1 before your next call to `cprt_getopt()`.
 tokenized input.
 Again, set `cprt_optind` to 1.
 
-## License
+# GNU Extensions
+
+When writing code for Linux, you can choose between two overall sets of
+runtime library APIs: portable or GNU-specific.
+GNU-specific code generally has the line:
+````c
+#define _GNU_SOURCE
+````
+at the top of the source file, preceided only by whitespace and/or
+comments.
+
+To [quote Rich Felker](https://stackoverflow.com/a/5583764):
+> If you define _GNU_SOURCE, you will get:
+> 
+> 1. access to lots of nonstandard GNU/Linux extension functions
+> 2. access to traditional functions which were omitted from the POSIX standard (often for good reason, such as being replaced with better alternatives, or being tied to particular legacy implementations)
+> 3. access to low-level functions that cannot be portable, but that you sometimes need for implementing system utilities like mount, ifconfig, etc.
+> 4. broken behavior for lots of POSIX-specified functions, where the GNU folks disagreed with the standards committee on how the functions should behave and decided to do their own thing.
+
+The whole point of cprt is to provide a common method of accessing
+functionality that is generally not portable across platforms.
+It's not necessarily that programs using cprt should be written portably,
+just that they can use non-portable functionality in a common way.
+
+This means that cprt should be usable by programmers who define _GNU_SOURCE
+in their source files, and by programmers who do not.
+
+This becomes problematic for certain corner cases where cprt uses an API
+that changes behavior between _GNU_SOURCE and not _GNU_SOURCE.
+For example, according to https://linux.die.net/man/3/strerror_r
+
+> int strerror_r(int errnum, char *buf, size_t buflen); /* XSI-compliant */
+>
+> char *strerror_r(int errnum, char *buf, size_t buflen); /* GNU-specific */
+>
+> ... It returns the error string in the user-supplied buffer buf of length buflen.
+>
+> ... The GNU-specific strerror_r() returns a pointer to a string containing the error message. This may be either a pointer to a string that the function stores in buf, or a pointer to some (immutable) static string (in which case buf is unused).
+
+I.e. if you write code that calls strerror_r(), you *must* know which version
+you are getting.
+
+This is why I need a ".c" file to go with cprt.
+
+My original cprt was fully-contained within a ".h" file,
+but I ran into problems where I needed _GNU_SOURCE for setting CPU affinity,
+but I did not want cprt to require users to compile their programs with
+_GNU_SOURCE.
+
+So I had to move some cprt functionality into a C module and explicitly set
+_GNU_SOURCE.
+So long as cprt [is reasonably careful](https://stackoverflow.com/a/44199427),
+"cprt.c" can safely be linked with code compiled without _GNU_SOURCE.
+
+# License
 
 I want there to be NO barriers to using this code, so I am releasing it to the public domain.  But "public domain" does not have an internationally agreed upon definition, so I use CC0:
 
