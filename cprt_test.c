@@ -43,6 +43,8 @@ void help() {
 }
 
 
+/* Some tests require an independent thread. */
+
 int my_thread_arg;
 CPRT_MUTEX_T my_thread_arg_mutex;
 CPRT_SPIN_T my_thread_arg_spinlock;

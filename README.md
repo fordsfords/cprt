@@ -4,8 +4,6 @@ between Windows and Linux (and sometimes Solaris).
 
 # Table of contents
 
-# Table of contents
-
 - [cprt](#cprt)
 - [Table of contents](#table-of-contents)
 - [INTRODUCTION](#introduction)
