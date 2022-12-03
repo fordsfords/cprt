@@ -169,7 +169,7 @@ extern "C" {
  *   https://stackoverflow.com/questions/25410690
  */
 #define CPRT_STRDEF2(cprt_strdef2_in_str) #cprt_strdef2_in_str
-#define CPRT_STRDEF(cprt_strdef_in_str) CPRT_CPRT_STRDEF2(cprt_strdef_in_str)
+#define CPRT_STRDEF(cprt_strdef_in_str) CPRT_STRDEF2(cprt_strdef_in_str)
 
 /* See http://blog.geeky-boy.com/2014/06/clangllvm-optimize-o3-understands-free.html
  *  for why the CPRT_VOL32 macro is needed.
