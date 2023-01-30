@@ -3,7 +3,7 @@
 
 OPTS=""
 if echo "$OSTYPE" | egrep -i linux >/dev/null; then :
-  OPTS="-l pthread"
+  OPTS="-pthread -l pthread"
 fi
 
 gcc -Wall -o cprt_test $OPTS cprt.c cprt_test.c
