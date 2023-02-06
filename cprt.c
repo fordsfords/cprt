@@ -99,6 +99,7 @@ void cprt_localtime_r(time_t *timep, struct tm *result)
 #endif
 }  /* cprt_localtime_r */
 
+
 char *cprt_strerror(int errnum, char *buffer, size_t buf_sz)
 {
 #if defined(_WIN32)
@@ -122,6 +123,49 @@ char *cprt_strerror(int errnum, char *buffer, size_t buf_sz)
 
   return buffer;
 }  /* cprt_strerror */
+
+
+void cprt_perrno(char *in_str, char *file, int line)
+{
+#if defined(_WIN32)
+  DWORD my_errno = errno;
+  if (my_errno != 0) {
+    char my_errstr[1024];
+    cprt_strerror(my_errno, my_errstr, sizeof(my_errstr));
+    fprintf(stderr, "ERROR (%s:%d): %s: errno=%u: '%s'\n",
+        CPRT_BASENAME(file), line, in_str,
+        my_errno, my_errstr);
+  }
+  else {
+    char *rtn_msg;
+    DWORD err;
+    my_errno = WSAGetLastError();
+    err = FormatMessageA(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+        NULL, my_errno, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&rtn_msg, 0, NULL);
+    if (err > 0) { /* If format worked */
+      fprintf(stderr, "ERROR (%s:%d): %s: WSAGetLastError=%d: %s",
+          CPRT_BASENAME(file), line, in_str, my_errno, rtn_msg);
+      LocalFree(rtn_msg);
+    }
+    else {
+      fprintf(stderr, "ERROR (%s:%d): %s: WSAGetLastError=%d (no description)\n",
+          CPRT_BASENAME(file), line, in_str, my_errno);
+    }
+  }
+  fflush(stderr);
+
+#else  /* Unix. */
+  char my_errno = errno;
+  char my_errstr[1024];
+  cprt_strerror(my_errno, my_errstr, sizeof(my_errstr));
+  fprintf(stderr, "ERROR (%s:%d): %s: errno=%u: %s\n",
+      CPRT_BASENAME(file), line, in_str,
+      my_errno, my_errstr);
+  fflush(stderr);
+
+#endif
+}  /* cprt_perrno */
 
 
 void cprt_set_affinity(uint64_t in_mask)

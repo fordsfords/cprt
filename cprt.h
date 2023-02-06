@@ -14,11 +14,15 @@
 
 /* Action to take on "fatal" error. */
 #define CPRT_ERR_EXIT do { \
+  CPRT_NET_CLEANUP; \
   exit(1); \
 } while (0)
 
 #if defined(_WIN32)
   #include <winsock2.h>
+  #include <ws2tcpip.h>
+  #include <mswsock.h>
+  #include <mstcpip.h>
   #pragma comment(lib, "Ws2_32.lib")
   #pragma warning(disable : 4996)
   typedef unsigned __int8 uint8_t;
@@ -56,6 +60,7 @@
   #define strtoull _strtoui64
 
 #else  /* Unix */
+  #include <arpa/inet.h>
   #include <unistd.h>
   #include <errno.h>
   #include <time.h>
@@ -76,6 +81,21 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#if defined(_WIN32)
+  #define CPRT_SOCKET SOCKET
+  #define CPRT_SOCKET_CLOSE closesocket
+  #define CPRT_SHUT_WR SD_SEND
+  #define CPRT_SHUT_RD SD_RECEIVE
+  #define CPRT_SHUT_RDWR SD_BOTH
+#else  /* Unix */
+  #define CPRT_SOCKET int
+  #define CPRT_SOCKET_CLOSE close
+  #define CPRT_SHUT_WR SHUT_WR
+  #define CPRT_SHUT_RD SHUT_RD
+  #define CPRT_SHUT_RDWR SHUT_RDWR
+#endif
+#define CPRT_LOCALTIME_R cprt_localtime_r
 
 #if defined(_WIN32)
   #define CPRT_TIMEOFDAY cprt_timeofday
@@ -101,14 +121,8 @@ extern "C" {
 #endif
 
 /* Macro to print errno in human-readable form. */
-#define CPRT_PERRNO(cprt_perrno_in_str_) do { \
-  char cprt_perrno_errno_ = errno; \
-  char cprt_perrno_errstr_[1024]; \
-  cprt_strerror(cprt_perrno_errno_, cprt_perrno_errstr_, sizeof(cprt_perrno_errstr_)); \
-  fprintf(stderr, "ERROR (%s:%d): %s: errno=%u ('%s')\n", \
-      CPRT_BASENAME(__FILE__), __LINE__, cprt_perrno_in_str_, \
-      cprt_perrno_errno_, cprt_perrno_errstr_); \
-  fflush(stderr); \
+#define CPRT_PERRNO(cprt_perrno_in_str) do { \
+  cprt_perrno(cprt_perrno_in_str, __FILE__, __LINE__); \
 } while (0)
 
 /* Use when non-zero means error. */
@@ -119,6 +133,18 @@ extern "C" {
     CPRT_SNPRINTF(cprt_eok0_errstr, sizeof(cprt_eok0_errstr), "'%s' is not 0", #cprt_eok0_expr); \
     errno = cprt_eok0_errno; \
     CPRT_PERRNO(cprt_eok0_errstr); \
+    CPRT_ERR_EXIT; \
+  } \
+} while (0)
+
+/* Use when non-zero means error. */
+#define CPRT_EOK1(cprt_eok1_expr) do { \
+  if ((cprt_eok1_expr) != 1) { \
+    int cprt_eok1_errno = errno; \
+    char cprt_eok1_errstr[1024]; \
+    CPRT_SNPRINTF(cprt_eok1_errstr, sizeof(cprt_eok1_errstr), "'%s' is not 1", #cprt_eok1_expr); \
+    errno = cprt_eok1_errno; \
+    CPRT_PERRNO(cprt_eok1_errstr); \
     CPRT_ERR_EXIT; \
   } \
 } while (0)
@@ -137,7 +163,7 @@ extern "C" {
 
 /* Use when -1 means error. */
 #define CPRT_EM1(cprt_em1_expr) do { \
-  if ((cprt_em1_expr) == -1) { \
+  if ((long)(cprt_em1_expr) == -1) { \
     int cprt_em1_errno = errno; \
     char cprt_em1_errstr[1024]; \
     CPRT_SNPRINTF(cprt_em1_errstr, sizeof(cprt_em1_errstr), "'%s' is -1", #cprt_em1_expr); \
@@ -201,12 +227,12 @@ extern "C" {
         new_errno_ = EINVAL; \
       } \
       fprintf(stderr, "%s:%d, Error, invalid number for %s: '%s'\n", \
-         __FILE__, __LINE__, #r_, in_a_); \
+         CPRT_BASENAME(__FILE__), __LINE__, #r_, in_a_); \
     } else { /* strtol thinks success; check for overflow. */ \
       (r_) = llresult_; /* "return" value of macro */ \
       if ((r_) != llresult_) { \
         fprintf(stderr, "%s:%d, %s over/under flow: '%s'\n", \
-           __FILE__, __LINE__, #r_, in_a_); \
+           CPRT_BASENAME(__FILE__), __LINE__, #r_, in_a_); \
         new_errno_ = ERANGE; \
       } \
     } \
@@ -227,18 +253,18 @@ extern "C" {
         new_errno_ = EINVAL; \
       } \
       fprintf(stderr, "%s:%d, Error, invalid number for %s: '%s'\n", \
-         __FILE__, __LINE__, #r_, in_a_); \
+         CPRT_BASENAME(__FILE__), __LINE__, #r_, in_a_); \
     } else { /* strtol thinks success; check for overflow. */ \
       (r_) = llresult_; /* "return" value of macro */ \
       if ((r_) != llresult_) { \
         fprintf(stderr, "%s:%d, %s over/under flow: '%s'\n", \
-           __FILE__, __LINE__, #r_, in_a_); \
+           CPRT_BASENAME(__FILE__), __LINE__, #r_, in_a_); \
         new_errno_ = ERANGE; \
       } \
     } \
   } \
   errno = new_errno_; \
-  CPRT_EOK0(errno); \
+  CPRT_EOK0(errno); /* Omit this line if you want errors to return. */ \
 } while (0)
 
 
@@ -254,7 +280,7 @@ extern "C" {
     if (cprt_net_start_e != 0) { \
       errno = GetLastError(); \
       CPRT_PERRNO("WSACleanup"); \
-      CPRT_ERR_EXIT; \
+      exit(1); /* Can't use CPRT_ERR_EXIT because it calls CPRT_NET_CLEANUP. */ \
     } \
   } while (0)
 
@@ -499,6 +525,7 @@ extern int cprt_num_events;
 extern int cprt_events[1024];
 void cprt_event(int e);
 void cprt_dump_events();
+void cprt_perrno(char *msg_str, char *file, int line);
 
 
 extern char* cprt_optarg;
