@@ -84,6 +84,18 @@ if which gdate >/dev/null 2>&1; then gdate +"%T.%N"
 else date +"%T.%N"
 fi
 
+if which gdate >/dev/null 2>&1; then gdate +"%T.%N"
+else date +"%T.%N"
+fi
+./cprt_test -t 66 >tst.tmp 2>&1
+if [ $? -ne 0 ]; then fail; fi
+egrep -v "^test " tst.tmp >tst.tmp1
+if [ -s tst.tmp1 ]; then fail; fi
+ok
+if which gdate >/dev/null 2>&1; then gdate +"%T.%N"
+else date +"%T.%N"
+fi
+
 ./cprt_test -t 7 >tst.tmp 2>&1
 if [ $? -ne 0 ]; then fail; fi
 egrep -v "^test |word='abc'|word='xyz'|word='123'" tst.tmp >tst.tmp1
@@ -97,6 +109,12 @@ if [ -s tst.tmp1 ]; then fail; fi
 ok
 
 ./cprt_test -t 81 >tst.tmp 2>&1
+if [ $? -ne 0 ]; then fail; fi
+egrep -v "^test |^50ms = " tst.tmp >tst.tmp1
+if [ -s tst.tmp1 ]; then fail; fi
+ok
+
+./cprt_test -t 82 >tst.tmp 2>&1
 if [ $? -ne 0 ]; then fail; fi
 egrep -v "^test |^50ms = " tst.tmp >tst.tmp1
 if [ -s tst.tmp1 ]; then fail; fi

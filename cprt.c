@@ -90,6 +90,21 @@ void cprt_inittime()
 #endif
 
 
+void cprt_sleep_ns(uint64_t duration_ns)
+{
+  uint64_t ns_so_far;
+  struct timespec cur_ts;
+  struct timespec start_ts;
+
+  CPRT_GETTIME(&start_ts);
+  cur_ts = start_ts;
+  do {  /* while */
+    CPRT_DIFF_TS(ns_so_far, cur_ts, start_ts);
+    CPRT_GETTIME(&cur_ts);
+  } while (ns_so_far < duration_ns);
+}  /* cprt_sleep_ns */
+
+
 void cprt_localtime_r(time_t *timep, struct tm *result)
 {
 #if defined(_WIN32)

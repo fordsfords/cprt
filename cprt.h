@@ -299,6 +299,7 @@ extern "C" {
   #define CPRT_STRDUP _strdup
   #define CPRT_SLEEP_SEC(s_) Sleep((s_)*1000)
   #define CPRT_SLEEP_MS Sleep
+  #define CPRT_SLEEP_NS cprt_sleep_ns  /* Uses busy spinning. */
   #define CPRT_STRTOK strtok_s
 
 #else  /* Unix */
@@ -306,6 +307,7 @@ extern "C" {
   #define CPRT_STRDUP strdup
   #define CPRT_SLEEP_SEC sleep
   #define CPRT_SLEEP_MS(ms_) usleep((ms_)*1000)
+  #define CPRT_SLEEP_NS cprt_sleep_ns  /* Uses busy spinning. */
   #define CPRT_STRTOK strtok_r
 #endif
 
@@ -392,7 +394,7 @@ extern "C" {
 
 
 #if defined(_WIN32)
-  #define CCPRT_SEM_T prt_sem_t;
+  #define CPRT_SEM_T prt_sem_t;
   #define CPRT_SEM_INIT(_s, _i) do { \
     (_s) = CreateSemaphore(NULL, _i, INT_MAX, NULL); \
     if ((_s) == NULL) { \
@@ -422,14 +424,14 @@ extern "C" {
   } while (0)
 
 #elif defined(__APPLE__)
-  #define CCPRT_SEM_T dispatch_semaphore_t
+  #define CPRT_SEM_T dispatch_semaphore_t
   #define CPRT_SEM_INIT(_s, _i) _s = dispatch_semaphore_create(_i)
   #define CPRT_SEM_DELETE(_s) dispatch_release(_s)
   #define CPRT_SEM_POST(_s) dispatch_semaphore_signal(_s)
   #define CPRT_SEM_WAIT(_s) dispatch_semaphore_wait(_s, DISPATCH_TIME_FOREVER)
 
 #else  /* Non-Apple Unixes */
-  #define CCPRT_SEM_T sem_t
+  #define CPRT_SEM_T sem_t
   #define CPRT_SEM_INIT(_s, _i) CPRT_EOK0(sem_init(&(_s), 0, _i))
   #define CPRT_SEM_DELETE(_s) CPRT_EOK0(sem_destroy(&(_s)))
   #define CPRT_SEM_POST(_s) CPRT_EOK0(sem_post(&(_s)))
@@ -469,10 +471,10 @@ extern "C" {
 
 #define CPRT_CPU_SET(_cprt_cpunum, _cprt_cpuset) do { \
   uint64_t *_cprt_cpuset_p = (_cprt_cpuset); \
-  if (_cprt_cpunum == 0) { \
+  if ((_cprt_cpunum) == 0) { \
     *_cprt_cpuset_p |= 1; \
   } else { \
-    *_cprt_cpuset_p |= (1ull << _cprt_cpunum); \
+    *_cprt_cpuset_p |= (1ull << (_cprt_cpunum)); \
   } \
 } while (0)
 
@@ -488,8 +490,8 @@ extern "C" {
     long tv_nsec;
   };
   #define CPRT_GETTIME(_ts) cprt_gettime(_ts)
-  void cprt_inittime();
   void cprt_gettime(struct cprt_timespec *ts);
+  void cprt_sleep_ns(uint64_t duration_ns);
   
 #elif defined(__APPLE__)
   #define CPRT_GETTIME(_ts) clock_gettime(CLOCK_MONOTONIC_RAW, _ts)
@@ -513,6 +515,7 @@ char *cprt_strerror(int errnum, char *buffer, size_t buf_sz);
 void cprt_set_affinity(uint64_t in_mask);
 int cprt_try_affinity(uint64_t in_mask);
 void cprt_inittime();
+void cprt_sleep_ns(uint64_t duration_ns);
 void cprt_localtime_r(time_t *timep, struct tm *result);
 
 #if defined(_WIN32)

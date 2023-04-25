@@ -48,6 +48,8 @@ void help() {
 int my_thread_arg;
 CPRT_MUTEX_T my_thread_arg_mutex;
 CPRT_SPIN_T my_thread_arg_spinlock;
+CPRT_SEM_T my_thread_wake_sem;
+CPRT_SEM_T my_test_wake_sem;
 
 CPRT_THREAD_ENTRYPOINT thread_test_8(void *in_arg)
 {
@@ -138,6 +140,26 @@ CPRT_THREAD_ENTRYPOINT thread_test_8_1(void *in_arg)
   CPRT_THREAD_EXIT;
   return 0;
 }  /* thread_test_8_1 */
+
+CPRT_THREAD_ENTRYPOINT thread_test_8_2(void *in_arg)
+{
+  int *int_arg = (int *)in_arg;
+
+  CPRT_ASSERT(int_arg == &my_thread_arg);
+  CPRT_ASSERT(my_thread_arg == o_testnum);
+
+  CPRT_SLEEP_MS(100);
+  my_thread_arg++;
+  CPRT_SEM_POST(my_test_wake_sem);
+
+  CPRT_SEM_WAIT(my_thread_wake_sem);
+  CPRT_ASSERT(my_thread_arg == (o_testnum+2));
+
+  CPRT_SLEEP_MS(100);
+  my_thread_arg++;
+  CPRT_THREAD_EXIT;
+  return 0;
+}  /* thread_test_8_2 */
 
 
 /* Affinity stuff not for Mac. */
@@ -257,6 +279,12 @@ int main(int argc, char **argv)
       CPRT_SLEEP_MS(1000);
       break;
 
+    case 66:
+      fprintf(stderr, "test %d: CPRT_SLEEP_NS 1000000000\n", o_testnum);
+      fflush(stderr);
+      CPRT_SLEEP_NS(1000000000);
+      break;
+
     case 7:
     {
       char *str, *word, *context;
@@ -277,7 +305,7 @@ int main(int argc, char **argv)
     {
       CPRT_THREAD_T my_thread_id;
       int got_lock;
-      fprintf(stderr, "test %d: CPRT_THREAD_CREATE\n", o_testnum);
+      fprintf(stderr, "test %d: CPRT_THREAD_CREATE, CPRT_MUTEX_INIT\n", o_testnum);
       fflush(stderr);
 
       CPRT_MUTEX_INIT(my_thread_arg_mutex);
@@ -315,7 +343,7 @@ int main(int argc, char **argv)
     {
       CPRT_THREAD_T my_thread_id;
       int got_lock;
-      fprintf(stderr, "test %d: CPRT_THREAD_CREATE\n", o_testnum);
+      fprintf(stderr, "test %d: CPRT_THREAD_CREATE, CPRT_SPIN_INIT\n", o_testnum);
       fflush(stderr);
 
       CPRT_SPIN_INIT(my_thread_arg_spinlock);
@@ -345,6 +373,33 @@ int main(int argc, char **argv)
       CPRT_ASSERT(my_thread_arg == o_testnum+4);
 
       CPRT_SPIN_DELETE(my_thread_arg_spinlock);
+      break;
+    }
+
+    case 82:
+    {
+      CPRT_THREAD_T my_thread_id;
+      fprintf(stderr, "test %d: CPRT_THREAD_CREATE, CPRT_SEM_INIT\n", o_testnum);
+      fflush(stderr);
+
+      CPRT_SEM_INIT(my_thread_wake_sem, 0);
+      CPRT_SEM_INIT(my_test_wake_sem, 0);
+      my_thread_arg = o_testnum;
+
+      CPRT_THREAD_CREATE(my_thread_id, thread_test_8_2, &my_thread_arg);
+
+      CPRT_SEM_WAIT(my_test_wake_sem);
+      CPRT_ASSERT(my_thread_arg == (o_testnum + 1));
+
+      CPRT_SLEEP_MS(100);
+      my_thread_arg++;
+      CPRT_SEM_POST(my_thread_wake_sem);
+
+      CPRT_THREAD_JOIN(my_thread_id);
+      CPRT_ASSERT(my_thread_arg == o_testnum+3);
+
+      CPRT_SEM_DELETE(my_thread_wake_sem);
+      CPRT_SEM_DELETE(my_test_wake_sem);
 
       break;
     }
