@@ -24,7 +24,6 @@
 #include <ctype.h>
 #include <string.h>
 #include <time.h>
-#include <sys/time.h>
 #include <errno.h>
 #include <stdarg.h>
 
@@ -95,8 +94,8 @@ void cprt_inittime()
 void cprt_sleep_ns(uint64_t duration_ns)
 {
   uint64_t ns_so_far;
-  struct timespec cur_ts;
-  struct timespec start_ts;
+  struct cprt_timespec cur_ts;
+  struct cprt_timespec start_ts;
 
   CPRT_GETTIME(&start_ts);
   cur_ts = start_ts;
@@ -188,9 +187,9 @@ void cprt_perrno(char *in_str, char *file, int line)
 /* This produces wall clock seconds after Unix epoc to ms precision. */
 uint64_t cprt_get_ms_time()
 {
-    struct timeval tv;
+    struct cprt_timeval tv;
 
-    gettimeofday(&tv, NULL);
+    CPRT_TIMEOFDAY(&tv, NULL);
     return ((uint64_t)tv.tv_sec * 1000) + ((uint64_t)tv.tv_usec / 1000);
 }  /* cprt_get_ms_time */
 
@@ -199,7 +198,7 @@ uint64_t cprt_get_ms_time()
  * Also flushes stdout. */
 void cprt_ms_printf(uint64_t start_ms, const char *format, ...)
 {
-    int fmtlen;
+    size_t fmtlen;
     char *fmtbuf;
     uint64_t cur_ms = cprt_get_ms_time();
 

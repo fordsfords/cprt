@@ -394,7 +394,7 @@ extern "C" {
 
 
 #if defined(_WIN32)
-  #define CPRT_SEM_T prt_sem_t;
+  #define CPRT_SEM_T HANDLE
   #define CPRT_SEM_INIT(_s, _i) do { \
     (_s) = CreateSemaphore(NULL, _i, INT_MAX, NULL); \
     if ((_s) == NULL) { \
