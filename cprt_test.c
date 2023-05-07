@@ -56,7 +56,7 @@ CPRT_THREAD_ENTRYPOINT thread_test_8(void *in_arg)
   int *int_arg = (int *)in_arg;
   int got_lock;
   struct cprt_timespec ts1, ts2;
-  uint64_t ts_diff;
+  uint64_t ts_diff, ms;
   long counter;
 
   CPRT_ASSERT(int_arg == &my_thread_arg);
@@ -68,11 +68,13 @@ CPRT_THREAD_ENTRYPOINT thread_test_8(void *in_arg)
   CPRT_ASSERT(my_thread_arg == o_testnum+1);
 
   CPRT_GETTIME(&ts1);
+  ms = cprt_get_ms_time();
   CPRT_SLEEP_MS(50);
   CPRT_GETTIME(&ts2);
   CPRT_DIFF_TS(ts_diff, ts2, ts1);
   printf("50ms = %"PRIu64"ns\n", ts_diff);
   CPRT_ASSERT(ts_diff > 40000000 && ts_diff < 69000000);
+  cprt_ms_printf(ms, "Test of cprt_ms_printf: %"PRIu64"\n", ts_diff);
 
   my_thread_arg++;  /* Becomes o_testnum+2. */
   CPRT_MUTEX_UNLOCK(my_thread_arg_mutex);

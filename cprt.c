@@ -24,7 +24,9 @@
 #include <ctype.h>
 #include <string.h>
 #include <time.h>
+#include <sys/time.h>
 #include <errno.h>
+#include <stdarg.h>
 
 #if defined(_WIN32)
 LARGE_INTEGER cprt_frequency;
@@ -181,6 +183,43 @@ void cprt_perrno(char *in_str, char *file, int line)
 
 #endif
 }  /* cprt_perrno */
+
+
+/* This produces wall clock seconds after Unix epoc to ms precision. */
+uint64_t cprt_get_ms_time()
+{
+    struct timeval tv;
+
+    gettimeofday(&tv, NULL);
+    return ((uint64_t)tv.tv_sec * 1000) + ((uint64_t)tv.tv_usec / 1000);
+}  /* cprt_get_ms_time */
+
+
+/* Called like printf but prints ms-resolution "delta" timestamp.
+ * Also flushes stdout. */
+void cprt_ms_printf(uint64_t start_ms, const char *format, ...)
+{
+    int fmtlen;
+    char *fmtbuf;
+    uint64_t cur_ms = cprt_get_ms_time();
+
+    /* Create new format string with timestamp prepended to it. */
+    fmtlen = strlen(format) + 30;  /* Allows up to 24 digits of seconds. */
+    fmtbuf = malloc(fmtlen);
+    snprintf(fmtbuf, fmtlen, "%"PRIu64".%03"PRIu64": %s",
+        (cur_ms - start_ms)/1000, (cur_ms - start_ms) % 1000, format);
+
+    /* Do the printf. */
+    {
+      va_list args;
+      va_start(args, format);  /* Tell va_* where the start of args is. */
+      vprintf(fmtbuf, args);   /* Pass in new format string. */
+      va_end(args);
+    }
+    fflush(stdout);
+
+    free(fmtbuf);
+}  /* cprt_ms_printf */
 
 
 void cprt_set_affinity(uint64_t in_mask)

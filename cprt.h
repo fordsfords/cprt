@@ -529,6 +529,8 @@ extern int cprt_events[1024];
 void cprt_event(int e);
 void cprt_dump_events();
 void cprt_perrno(char *msg_str, char *file, int line);
+uint64_t cprt_get_ms_time();
+void cprt_ms_printf(uint64_t start_ms, const char *format, ...);
 
 
 extern char* cprt_optarg;
