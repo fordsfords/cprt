@@ -184,6 +184,82 @@ void cprt_perrno(char *in_str, char *file, int line)
 }  /* cprt_perrno */
 
 
+/* Get date/time stamp (date optional) with up to microsecond precision.
+ * Returns passed-in string pointer for convenience. */
+char *cprt_timestamp(char *str, int bufsz, int do_date, int precision)
+{
+  static unsigned long long pow_10[7] = { 1, 10, 100, 1000, 10000, 100000, 1000000 };
+  struct cprt_timeval cur_time_tv;
+  struct tm tm_buf;
+  char *rtn_str = str;
+
+  CPRT_TIMEOFDAY(&cur_time_tv, NULL);
+  CPRT_LOCALTIME_R(&cur_time_tv.tv_sec, &tm_buf);  /* Break down current time. */
+
+  if (do_date && precision > 0) {
+    CPRT_SNPRINTF(str, bufsz, "%04d-%02d-%02d %02d:%02d:%02d.%0*d",
+        (int)tm_buf.tm_year + 1900, (int)tm_buf.tm_mon + 1, (int)tm_buf.tm_mday,
+        (int)tm_buf.tm_hour, (int)tm_buf.tm_min, (int)tm_buf.tm_sec,
+        precision, (int)(cur_time_tv.tv_usec / pow_10[6 - precision]));
+  }
+  else if (do_date && precision == 0) {
+    CPRT_SNPRINTF(str, bufsz, "%04d-%02d-%02d %02d:%02d:%02d",
+        (int)tm_buf.tm_year + 1900, (int)tm_buf.tm_mon + 1, (int)tm_buf.tm_mday,
+        (int)tm_buf.tm_hour, (int)tm_buf.tm_min, (int)tm_buf.tm_sec);
+  }
+  else if (!do_date && precision > 0) {
+    CPRT_SNPRINTF(str, bufsz, "%02d:%02d:%02d.%0*d",
+        (int)tm_buf.tm_hour, (int)tm_buf.tm_min, (int)tm_buf.tm_sec,
+        precision, (int)(cur_time_tv.tv_usec / pow_10[6 - precision]));
+  }
+  else {  /* !do_date && precision==0 */
+    CPRT_SNPRINTF(str, bufsz, "%02d:%02d:%02d",
+        (int)tm_buf.tm_hour, (int)tm_buf.tm_min, (int)tm_buf.tm_sec);
+  }
+
+  return rtn_str;
+}  /* cprt_timestamp */
+
+
+/* Called like printf but prints ms-resolution "delta" timestamp.
+ * Also flushes stdout. */
+void cprt_vts_fprintf(FILE *fp, const char *format, va_list argp)
+{
+  size_t fmt_len, ts_len;
+  char *fmt_buf;
+
+  /* Create new format string with timestamp prepended to it. */
+  fmt_len = strlen(format) + 32;  /* Allows yyyy-mmm-dd hh:mm:ss.uuuuuuuu: */
+  fmt_buf = malloc(fmt_len);
+  cprt_timestamp(fmt_buf, 32, 1, 3);  /* Include date and 3 decimals for seconds. */
+  ts_len = strlen(fmt_buf);
+  snprintf(&fmt_buf[ts_len], fmt_len - ts_len, ": %s", format);
+
+  vfprintf(fp, fmt_buf, argp);   /* Pass in new format string. */
+  fflush(fp);
+
+  free(fmt_buf);
+}  /* cprt_vts_fprintf */
+
+
+void cprt_ts_printf(const char *format, ...)
+{
+  va_list argp;
+  va_start(argp, format);  /* Tell va_* where the start of argp is. */
+  cprt_vts_fprintf(stdout, format, argp);   /* Pass in new format string. */
+  va_end(argp);
+}  /* cprt_ts_printf */
+
+
+void cprt_ts_eprintf(const char *format, ...)
+{
+  va_list argp;
+  va_start(argp, format);  /* Tell va_* where the start of argp is. */
+  cprt_vts_fprintf(stderr, format, argp);   /* Pass in new format string. */
+  va_end(argp);
+}  /* cprt_ts_eprintf */
+
+
 /* This produces wall clock seconds after Unix epoc to ms precision. */
 uint64_t cprt_get_ms_time()
 {
@@ -196,29 +272,42 @@ uint64_t cprt_get_ms_time()
 
 /* Called like printf but prints ms-resolution "delta" timestamp.
  * Also flushes stdout. */
+void cprt_vms_fprintf(FILE *fp, uint64_t start_ms, const char *format, va_list argp)
+{
+  size_t fmt_len;
+  char *fmt_buf;
+  uint64_t cur_ms = cprt_get_ms_time();
+
+  /* Create new format string with timestamp prepended to it. */
+  fmt_len = strlen(format) + 30;  /* Allows up to 24 digits of seconds. */
+  fmt_buf = malloc(fmt_len);
+  snprintf(fmt_buf, fmt_len, "%"PRIu64".%03"PRIu64": %s",
+      (cur_ms - start_ms)/1000, (cur_ms - start_ms) % 1000, format);
+
+  /* Do the printf. */
+  vfprintf(fp, fmt_buf, argp);   /* Pass in new format string. */
+  fflush(fp);
+
+  free(fmt_buf);
+}  /* cprt_vms_fprintf */
+
+
 void cprt_ms_printf(uint64_t start_ms, const char *format, ...)
 {
-    size_t fmtlen;
-    char *fmtbuf;
-    uint64_t cur_ms = cprt_get_ms_time();
-
-    /* Create new format string with timestamp prepended to it. */
-    fmtlen = strlen(format) + 30;  /* Allows up to 24 digits of seconds. */
-    fmtbuf = malloc(fmtlen);
-    snprintf(fmtbuf, fmtlen, "%"PRIu64".%03"PRIu64": %s",
-        (cur_ms - start_ms)/1000, (cur_ms - start_ms) % 1000, format);
-
-    /* Do the printf. */
-    {
-      va_list args;
-      va_start(args, format);  /* Tell va_* where the start of args is. */
-      vprintf(fmtbuf, args);   /* Pass in new format string. */
-      va_end(args);
-    }
-    fflush(stdout);
-
-    free(fmtbuf);
+  va_list argp;
+  va_start(argp, format);  /* Tell va_* where the start of argp is. */
+  cprt_vms_fprintf(stdout, start_ms, format, argp);   /* Pass in new format string. */
+  va_end(argp);
 }  /* cprt_ms_printf */
+
+
+void cprt_ms_eprintf(uint64_t start_ms, const char *format, ...)
+{
+  va_list argp;
+  va_start(argp, format);  /* Tell va_* where the start of argp is. */
+  cprt_vms_fprintf(stderr, start_ms, format, argp);   /* Pass in new format string. */
+  va_end(argp);
+}  /* cprt_ms_eprintf */
 
 
 void cprt_set_affinity(uint64_t in_mask)

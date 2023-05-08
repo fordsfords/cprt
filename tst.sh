@@ -41,7 +41,8 @@ ok
 if [ $? -eq 0 ]; then fail; fi
 if egrep "This should fail" tst.tmp >/dev/null; then :; else :
   fail; fi
-egrep -v "^test |This should fail" tst.tmp >tst.tmp1
+DATE=`date +%Y-%m-%d`
+egrep -v "^$DATE ..:..:..\....: test 2: |This should fail" tst.tmp >tst.tmp1
 if [ -s tst.tmp1 ]; then fail; fi
 ok
 

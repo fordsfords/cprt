@@ -18,6 +18,8 @@
   exit(1); \
 } while (0)
 
+#include <stdio.h>
+
 #if defined(_WIN32)
   #include <winsock2.h>
   #include <ws2tcpip.h>
@@ -529,8 +531,14 @@ extern int cprt_events[1024];
 void cprt_event(int e);
 void cprt_dump_events();
 void cprt_perrno(char *msg_str, char *file, int line);
+char *cprt_timestamp(char *str, int bufsz, int do_date, int precision);
+void cprt_vts_fprintf(FILE *fp, const char *format, va_list argp);
+void cprt_ts_printf(const char *format, ...);
+void cprt_ts_eprintf(const char *format, ...);
 uint64_t cprt_get_ms_time();
+void cprt_vms_fprintf(FILE *fp, uint64_t start_ms, const char *format, va_list argp);
 void cprt_ms_printf(uint64_t start_ms, const char *format, ...);
+void cprt_ms_eprintf(uint64_t start_ms, const char *format, ...);
 
 
 extern char* cprt_optarg;

@@ -74,7 +74,7 @@ CPRT_THREAD_ENTRYPOINT thread_test_8(void *in_arg)
   CPRT_DIFF_TS(ts_diff, ts2, ts1);
   printf("50ms = %"PRIu64"ns\n", ts_diff);
   CPRT_ASSERT(ts_diff > 40000000 && ts_diff < 69000000);
-  cprt_ms_printf(ms, "Test of cprt_ms_printf: %"PRIu64"\n", ts_diff);
+  cprt_ms_printf(ms, "Test of %s: %"PRIu64"\n", "cprt_ms_printf", ts_diff);
 
   my_thread_arg++;  /* Becomes o_testnum+2. */
   CPRT_MUTEX_UNLOCK(my_thread_arg_mutex);
@@ -245,8 +245,7 @@ int main(int argc, char **argv)
     }
 
     case 2:
-      fprintf(stderr, "test %d: CPRT_ASSERT\n", o_testnum);
-      fflush(stderr);
+      cprt_ts_eprintf("test %d: CPRT_ASSERT\n", o_testnum);
       CPRT_ASSERT((o_testnum == 2) && "This should NOT fail");
       CPRT_ASSERT((o_testnum != 2) && "This should fail");
       break;
