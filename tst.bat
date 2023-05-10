@@ -21,6 +21,10 @@ x64\Debug\cprt.exe -t 8
 
 x64\Debug\cprt.exe -t 81
 
+x64\Debug\cprt.exe -t 82
+
+x64\Debug\cprt.exe -t 83
+
 x64\Debug\cprt.exe -t 9
 
 x64\Debug\cprt.exe -t 10

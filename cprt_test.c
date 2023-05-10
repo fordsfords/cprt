@@ -50,13 +50,16 @@ CPRT_MUTEX_T my_thread_arg_mutex;
 CPRT_SPIN_T my_thread_arg_spinlock;
 CPRT_SEM_T my_thread_wake_sem;
 CPRT_SEM_T my_test_wake_sem;
+CPRT_MUTEX_T my_cond_mutex;
+CPRT_COND_T my_cond_var;
+int my_cond_state;
 
 CPRT_THREAD_ENTRYPOINT thread_test_8(void *in_arg)
 {
   int *int_arg = (int *)in_arg;
   int got_lock;
   struct cprt_timespec ts1, ts2;
-  uint64_t ts_diff, ms;
+  uint64_t ts_diff, ms1, ms2;
   long counter;
 
   CPRT_ASSERT(int_arg == &my_thread_arg);
@@ -68,13 +71,16 @@ CPRT_THREAD_ENTRYPOINT thread_test_8(void *in_arg)
   CPRT_ASSERT(my_thread_arg == o_testnum+1);
 
   CPRT_GETTIME(&ts1);
-  ms = cprt_get_ms_time();
+  ms1 = cprt_get_ms_time();
   CPRT_SLEEP_MS(50);
   CPRT_GETTIME(&ts2);
+  ms2 = cprt_get_ms_time();
   CPRT_DIFF_TS(ts_diff, ts2, ts1);
   printf("50ms = %"PRIu64"ns\n", ts_diff);
   CPRT_ASSERT(ts_diff > 40000000 && ts_diff < 69000000);
-  cprt_ms_printf(ms, "Test of %s: %"PRIu64"\n", "cprt_ms_printf", ts_diff);
+  CPRT_ASSERT((ms2 - ms1) > 40 && (ms2 - ms1) < 69);
+  cprt_ms_printf(ms1, "Test of %s: %"PRIu64"\n", "cprt_ms_printf", ts_diff);
+  cprt_ts_printf("Test of %s: %"PRIu64"\n", "cprt_ts_printf", ts_diff);
 
   my_thread_arg++;  /* Becomes o_testnum+2. */
   CPRT_MUTEX_UNLOCK(my_thread_arg_mutex);
@@ -162,6 +168,25 @@ CPRT_THREAD_ENTRYPOINT thread_test_8_2(void *in_arg)
   CPRT_THREAD_EXIT;
   return 0;
 }  /* thread_test_8_2 */
+
+CPRT_THREAD_ENTRYPOINT thread_test_8_3(void *in_arg)
+{
+  int *int_arg = (int *)in_arg;
+
+  CPRT_ASSERT(int_arg == &my_thread_arg);
+  CPRT_ASSERT(my_thread_arg == o_testnum);
+
+  CPRT_SLEEP_MS(50);
+  {
+    CPRT_MUTEX_LOCK(my_cond_mutex);
+    my_cond_state = 1;
+    CPRT_COND_SIGNAL(my_cond_var);
+    CPRT_MUTEX_UNLOCK(my_cond_mutex);
+  }
+
+  CPRT_THREAD_EXIT;
+  return 0;
+}  /* thread_test_8_3 */
 
 
 /* Affinity stuff not for Mac. */
@@ -401,6 +426,41 @@ int main(int argc, char **argv)
 
       CPRT_SEM_DELETE(my_thread_wake_sem);
       CPRT_SEM_DELETE(my_test_wake_sem);
+
+      break;
+    }
+
+    case 83:
+    {
+      struct cprt_timespec ts1, ts2;
+      uint64_t ts_diff;
+      CPRT_THREAD_T my_thread_id;
+      fprintf(stderr, "test %d: CPRT_THREAD_CREATE, CPRT_COND_INIT\n", o_testnum);
+      fflush(stderr);
+
+      CPRT_MUTEX_INIT(my_cond_mutex);
+      CPRT_COND_INIT(my_cond_var);
+      my_cond_state = 0;
+      my_thread_arg = o_testnum;
+
+      CPRT_THREAD_CREATE(my_thread_id, thread_test_8_3, &my_thread_arg);
+
+      CPRT_GETTIME(&ts1);
+      {
+        CPRT_MUTEX_LOCK(my_cond_mutex);
+        while (my_cond_state != 1) {
+          CPRT_COND_WAIT(my_cond_var, my_cond_mutex);
+        }
+        CPRT_MUTEX_UNLOCK(my_cond_mutex);
+      }
+      CPRT_GETTIME(&ts2);
+      CPRT_DIFF_TS(ts_diff, ts2, ts1);
+      CPRT_ASSERT(ts_diff > 40000000 && ts_diff < 69000000);
+
+      CPRT_THREAD_JOIN(my_thread_id);
+
+      CPRT_MUTEX_DELETE(my_cond_mutex);
+      CPRT_COND_DELETE(my_cond_var);
 
       break;
     }

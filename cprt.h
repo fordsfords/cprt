@@ -315,6 +315,13 @@ extern "C" {
 
 
 #if defined(_WIN32)
+  #define CPRT_COND_T CONDITION_VARIABLE
+  #define CPRT_COND_INIT(_c) InitializeConditionVariable(&(_c))
+  #define CPRT_COND_WAIT(_c, _m) SleepConditionVariableCS(&(_c), &(_m), INFINITE)
+  #define CPRT_COND_SIGNAL(_c) WakeConditionVariable(&(_c))
+  #define CPRT_COND_BROADCAST(_c) WakeAllConditionVariable(&(_c))
+  #define CPRT_COND_DELETE(_c) do {;} while (0)
+
   #define CPRT_MUTEX_T CRITICAL_SECTION
   #define CPRT_MUTEX_INIT(_m) InitializeCriticalSection(&(_m))
   #define CPRT_MUTEX_INIT_RECURSIVE(_m) InitializeCriticalSection(&(_m))
@@ -331,6 +338,13 @@ extern "C" {
   #define CPRT_SPIN_DELETE(_m) DeleteCriticalSection(&(_m))
 
 #else  /* Unixes. */
+  #define CPRT_COND_T pthread_cond_t
+  #define CPRT_COND_INIT(_c) pthread_cond_init(&(_c), NULL)
+  #define CPRT_COND_WAIT(_c, _m) pthread_cond_wait(&(_c), &(_m))
+  #define CPRT_COND_SIGNAL(_c) pthread_cond_signal(&(_c))
+  #define CPRT_COND_BROADCAST(_c) pthread_cond_broadcast(&(_c))
+  #define CPRT_COND_DELETE(_c) pthread_cond_destroy(&(_c))
+
   #define CPRT_MUTEX_T pthread_mutex_t
   #define CPRT_MUTEX_INIT_RECURSIVE(_m) do { \
     pthread_mutexattr_t _mutexattr; \
