@@ -177,7 +177,7 @@ extern "C" {
 
 #define CPRT_ASSERT(cprt_assert_cond) do { \
   if (! (cprt_assert_cond)) { \
-    fprintf(stderr, "ERROR (%s:%d): ERROR: '%s' not true\n", \
+    cprt_ts_eprintf("ERROR (%s:%d): ERROR: '%s' not true\n", \
       CPRT_BASENAME(__FILE__), __LINE__, #cprt_assert_cond); \
     if (cprt_num_events > 0) { cprt_dump_events(stderr); } \
     fflush(stderr); \
@@ -186,7 +186,7 @@ extern "C" {
 } while (0)
 
 #define CPRT_ABORT(cprt_abort_in_str) do { \
-  fprintf(stderr, "ERROR (%s:%d): ABORT: %s\n", \
+  cprt_ts_eprintf("ERROR (%s:%d): ABORT: %s\n", \
     CPRT_BASENAME(__FILE__), __LINE__, cprt_abort_in_str); \
   fflush(stderr); \
   abort(); \
