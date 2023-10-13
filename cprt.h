@@ -106,11 +106,20 @@ extern "C" {
 #endif
 #define CPRT_LOCALTIME_R cprt_localtime_r
 
+/* Get usec diff between two struct timeval (used by gettimeofday). */
+#define CPRT_DIFF_TV(diff_tv_result_us_, diff_tv_end_us_, diff_tv_start_us_) do { \
+  (diff_tv_result_us_) = (((uint64_t)diff_tv_end_us_.tv_sec \
+                           - (uint64_t)diff_tv_start_us_.tv_sec) * 1000000000ull \
+                          + (uint64_t)diff_tv_end_us_.tv_usec) \
+                         - (uint64_t)diff_tv_start_us_.tv_usec; \
+} while (0)  /* CPRT_DIFF_TV */
+
 
 #if defined(_WIN32)
   #define CPRT_ATOMIC_INC_VAL(_p) InterlockedIncrement(_p)
   #define CPRT_ATOMIC_DEC_VAL(_p) InterlockedDecrement(_p)
 #else  /* Unix */
+  /* GCC supports multiple types. For portability, please limit to "long" (signed or unsigned). */
   #define CPRT_ATOMIC_INC_VAL(_p) __sync_add_and_fetch(_p, 1)
   #define CPRT_ATOMIC_DEC_VAL(_p) __sync_sub_and_fetch(_p, 1)
 #endif
@@ -457,6 +466,7 @@ extern "C" {
 
 #if defined(_WIN32)
   #define CPRT_THREAD_T HANDLE
+  #define CPRT_THREAD_ID_T uint64_t
   #define CPRT_THREAD_ENTRYPOINT DWORD WINAPI
   #define CPRT_THREAD_CREATE(_tid, _tstrt, _targ) do {\
     DWORD _ignore;\
@@ -469,15 +479,18 @@ extern "C" {
   } while (0)
   #define CPRT_THREAD_EXIT do { ExitThread(0); } while (0)
   #define CPRT_THREAD_JOIN(_tid) WaitForSingleObject(_tid, INFINITE)
+  #define CPRT_GET_THREAD_ID() ((CPRT_THREAD_ID_T)GetCurrentThreadId())
 
 #else  /* Unix */
   #define CPRT_THREAD_T pthread_t
+  #define CPRT_THREAD_ID_T uint64_t
   #define CPRT_THREAD_ENTRYPOINT void *
   #define CPRT_THREAD_CREATE(_tid, _tstrt, _targ) \
     CPRT_EOK0(errno = pthread_create(&(_tid), NULL, _tstrt, _targ))
   #define CPRT_THREAD_EXIT pthread_exit(NULL)
   #define CPRT_THREAD_JOIN(_tid) \
     CPRT_EOK0(errno = pthread_join(_tid, NULL))
+  #define CPRT_GET_THREAD_ID() ((CPRT_THREAD_ID_T)pthread_self())
 #endif
 
 #define CPRT_CPU_ZERO(_cprt_cpuset) do { \
@@ -519,12 +532,13 @@ extern "C" {
   #define cprt_timespec timespec
 #endif
 
-#define CPRT_DIFF_TS(diff_ts_result_ns_, diff_ts_end_ts_, diff_ts_start_ts_) do { \
-  (diff_ts_result_ns_) = (((uint64_t)diff_ts_end_ts_.tv_sec \
-                           - (uint64_t)diff_ts_start_ts_.tv_sec) * 1000000000 \
-                          + (uint64_t)diff_ts_end_ts_.tv_nsec) \
-                         - (uint64_t)diff_ts_start_ts_.tv_nsec; \
-} while (0)  /* DIFF_TS */
+/* Get nsec diff between two struct timespec (used by clock_gettime). */
+#define CPRT_DIFF_TS(diff_ts_result_ns_, diff_ts_end_ns_, diff_ts_start_ns_) do { \
+  (diff_ts_result_ns_) = (((uint64_t)diff_ts_end_ns_.tv_sec \
+                           - (uint64_t)diff_ts_start_ns_.tv_sec) * 1000000000ull \
+                          + (uint64_t)diff_ts_end_ns_.tv_nsec) \
+                         - (uint64_t)diff_ts_start_ns_.tv_nsec; \
+} while (0)  /* CPRT_DIFF_TS */
 
 /* externals in cprt.c. */
 char *cprt_strerror(int errnum, char *buffer, size_t buf_sz);

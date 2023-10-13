@@ -43,6 +43,9 @@ void help() {
 }
 
 
+CPRT_THREAD_ID_T main_thread_id;
+CPRT_THREAD_ID_T sub_thread_id;
+
 /* Some tests require an independent thread. */
 
 int my_thread_arg;
@@ -59,7 +62,9 @@ CPRT_THREAD_ENTRYPOINT thread_test_8(void *in_arg)
   int *int_arg = (int *)in_arg;
   int got_lock;
   struct cprt_timespec ts1, ts2;
-  uint64_t ts_diff, ms1, ms2;
+  uint64_t ts_diff_ns, ms1, ms2;
+  struct cprt_timeval tv1, tv2;
+  uint64_t tv_diff_us;
   long counter;
 
   CPRT_ASSERT(int_arg == &my_thread_arg);
@@ -70,17 +75,21 @@ CPRT_THREAD_ENTRYPOINT thread_test_8(void *in_arg)
   CPRT_MUTEX_LOCK(my_thread_arg_mutex);
   CPRT_ASSERT(my_thread_arg == o_testnum+1);
 
+  CPRT_EOK0(CPRT_TIMEOFDAY(&tv1, NULL));
   CPRT_GETTIME(&ts1);
   ms1 = cprt_get_ms_time();
   CPRT_SLEEP_MS(50);
+  CPRT_EOK0(CPRT_TIMEOFDAY(&tv2, NULL));
   CPRT_GETTIME(&ts2);
   ms2 = cprt_get_ms_time();
-  CPRT_DIFF_TS(ts_diff, ts2, ts1);
-  printf("50ms = %"PRIu64"ns\n", ts_diff);
-  CPRT_ASSERT(ts_diff > 40000000 && ts_diff < 69000000);
+  CPRT_DIFF_TS(ts_diff_ns, ts2, ts1);
+  CPRT_DIFF_TV(tv_diff_us, tv2, tv1);
+  printf("50ms = %"PRIu64"ns, %"PRIu64"us\n", ts_diff_ns, tv_diff_us);
+  CPRT_ASSERT(ts_diff_ns > 40000000 && ts_diff_ns < 69000000);
+  CPRT_ASSERT(tv_diff_us > 40000 && tv_diff_us < 69000);
   CPRT_ASSERT((ms2 - ms1) > 40 && (ms2 - ms1) < 69);
-  cprt_ms_printf(ms1, "Test of %s: %"PRIu64"\n", "cprt_ms_printf", ts_diff);
-  cprt_ts_printf("Test of %s: %"PRIu64"\n", "cprt_ts_printf", ts_diff);
+  cprt_ms_printf(ms1, "Test of %s: %"PRIu64"\n", "cprt_ms_printf", ts_diff_ns);
+  cprt_ts_printf("Test of %s: %"PRIu64"\n", "cprt_ts_printf", ts_diff_ns);
 
   my_thread_arg++;  /* Becomes o_testnum+2. */
   CPRT_MUTEX_UNLOCK(my_thread_arg_mutex);
@@ -100,6 +109,11 @@ CPRT_THREAD_ENTRYPOINT thread_test_8(void *in_arg)
   CPRT_ASSERT(CPRT_ATOMIC_DEC_VAL(&counter) == 0);
   CPRT_ASSERT(counter == 0);
 
+  sub_thread_id = CPRT_GET_THREAD_ID();
+  printf("Main thread ID=%"PRIu64", Sub thread ID=%"PRIu64"\n",
+      main_thread_id, sub_thread_id);
+  CPRT_ASSERT(main_thread_id != sub_thread_id);
+
   CPRT_THREAD_EXIT;
   return 0;
 }  /* thread_test_8 */
@@ -109,7 +123,7 @@ CPRT_THREAD_ENTRYPOINT thread_test_8_1(void *in_arg)
   int *int_arg = (int *)in_arg;
   int got_lock;
   struct cprt_timespec ts1, ts2;
-  uint64_t ts_diff;
+  uint64_t ts_diff_ns;
   long counter;
 
   CPRT_ASSERT(int_arg == &my_thread_arg);
@@ -123,9 +137,9 @@ CPRT_THREAD_ENTRYPOINT thread_test_8_1(void *in_arg)
   CPRT_GETTIME(&ts1);
   CPRT_SLEEP_MS(50);
   CPRT_GETTIME(&ts2);
-  CPRT_DIFF_TS(ts_diff, ts2, ts1);
-  printf("50ms = %"PRIu64"ns\n", ts_diff);
-  CPRT_ASSERT(ts_diff > 40000000 && ts_diff < 69000000);
+  CPRT_DIFF_TS(ts_diff_ns, ts2, ts1);
+  printf("50ms = %"PRIu64"ns\n", ts_diff_ns);
+  CPRT_ASSERT(ts_diff_ns > 40000000 && ts_diff_ns < 69000000);
 
   my_thread_arg++;  /* Becomes o_testnum+2. */
   CPRT_SPIN_UNLOCK(my_thread_arg_spinlock);
@@ -223,6 +237,8 @@ int main(int argc, char **argv)
   int opt;
 
   CPRT_NET_START;
+
+  main_thread_id = CPRT_GET_THREAD_ID();
 
   while ((opt = cprt_getopt(argc, argv, "ht:")) != EOF) {
     switch (opt) {
@@ -433,7 +449,7 @@ int main(int argc, char **argv)
     case 83:
     {
       struct cprt_timespec ts1, ts2;
-      uint64_t ts_diff;
+      uint64_t ts_diff_ns;
       CPRT_THREAD_T my_thread_id;
       fprintf(stderr, "test %d: CPRT_THREAD_CREATE, CPRT_COND_INIT\n", o_testnum);
       fflush(stderr);
@@ -454,8 +470,8 @@ int main(int argc, char **argv)
         CPRT_MUTEX_UNLOCK(my_cond_mutex);
       }
       CPRT_GETTIME(&ts2);
-      CPRT_DIFF_TS(ts_diff, ts2, ts1);
-      CPRT_ASSERT(ts_diff > 40000000 && ts_diff < 69000000);
+      CPRT_DIFF_TS(ts_diff_ns, ts2, ts1);
+      CPRT_ASSERT(ts_diff_ns > 40000000 && ts_diff_ns < 69000000);
 
       CPRT_THREAD_JOIN(my_thread_id);
 

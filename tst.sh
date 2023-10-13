@@ -105,7 +105,7 @@ ok
 
 ./cprt_test -t 8 >tst.tmp 2>&1
 if [ $? -ne 0 ]; then fail; fi
-egrep -v "^test |^50ms = |cprt_ms_printf|cprt_ts_printf" tst.tmp >tst.tmp1
+egrep -v "^test |^50ms = |cprt_ms_printf|cprt_ts_printf|^Main thread ID=" tst.tmp >tst.tmp1
 if [ -s tst.tmp1 ]; then fail; fi
 egrep "cprt_ms_printf" tst.tmp
 ok

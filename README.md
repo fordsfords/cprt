@@ -4,16 +4,17 @@ between Windows and Linux (and sometimes Solaris).
 
 # Table of contents
 
-- [cprt](#cprt)
-- [Table of contents](#table-of-contents)
-- [INTRODUCTION](#introduction)
-- [APIs](#apis)
-  - [CPRT_GETTIME](#cprt_gettime)
-  - [cprt_getopt](#cprt_getopt)
-- [GNU Extensions](#gnu-extensions)
-- [License](#license)
-
-<sup>(table of contents from https://luciopaiva.com/markdown-toc/)</sup>
+<!-- mdtoc-start -->
+&bull; [cprt](#cprt)  
+&bull; [Table of contents](#table-of-contents)  
+&bull; [INTRODUCTION](#introduction)  
+&bull; [APIs](#apis)  
+&nbsp;&nbsp;&nbsp;&nbsp;&bull; [CPRT_GETTIME](#cprt_gettime)  
+&nbsp;&nbsp;&nbsp;&nbsp;&bull; [cprt_getopt](#cprt_getopt)  
+&bull; [GNU Extensions](#gnu-extensions)  
+&bull; [License](#license)  
+<!-- TOC created by '../mdtoc/mdtoc.pl README.md' (see https://github.com/fordsfords/mdtoc) -->
+<!-- mdtoc-end -->
 
 # INTRODUCTION
 
