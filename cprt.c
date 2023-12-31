@@ -221,8 +221,8 @@ char *cprt_timestamp(char *str, int bufsz, int do_date, int precision)
 }  /* cprt_timestamp */
 
 
-/* Called like printf but prints ms-resolution "delta" timestamp.
- * Also flushes stdout. */
+/* Called like fprintf but prints ms-resolution "delta" timestamp.
+ * Also flushes file. */
 void cprt_vts_fprintf(FILE *fp, const char *format, va_list argp)
 {
   size_t fmt_len, ts_len;
