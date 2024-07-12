@@ -13,7 +13,7 @@ between Windows and Linux (and sometimes Solaris).
 &nbsp;&nbsp;&nbsp;&nbsp;&bull; [cprt_getopt](#cprt_getopt)  
 &bull; [GNU Extensions](#gnu-extensions)  
 &bull; [License](#license)  
-<!-- TOC created by '../mdtoc/mdtoc.pl README.md' (see https://github.com/fordsfords/mdtoc) -->
+<!-- TOC created by '/home/sford/bin/mdtoc.pl README.md' (see https://github.com/fordsfords/mdtoc) -->
 <!-- mdtoc-end -->
 
 # INTRODUCTION
